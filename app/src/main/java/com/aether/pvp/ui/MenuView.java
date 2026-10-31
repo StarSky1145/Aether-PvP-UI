@@ -535,11 +535,11 @@ public final class MenuView extends View {
             needsFrame = true;
         }
         if (configModule != null) {
-            float target = 1f;
-            if (configAnim < target) {
-                configAnim += (target - configAnim) * Math.min(1f, dt * 16f);
-                if (target - configAnim < 0.002f) {
-                    configAnim = target;
+            float configTarget = 1f;
+            if (configAnim < configTarget) {
+                configAnim += (configTarget - configAnim) * Math.min(1f, dt * 16f);
+                if (configTarget - configAnim < 0.002f) {
+                    configAnim = configTarget;
                 }
             }
             needsFrame = true;
@@ -1178,7 +1178,7 @@ public final class MenuView extends View {
             return;
         }
         float mw = Math.min(520f * u, panel.width() - 34f * u);
-        float mh = Math.min(318f * u, panel.height() - 22f * u);
+        float mh = Math.min(286f * u, panel.height() - 22f * u);
         float left = panel.centerX() - mw * 0.5f;
         float top = panel.centerY() - mh * 0.5f;
         configPanel.set(left, top, left + mw, top + mh);
@@ -1619,8 +1619,8 @@ public final class MenuView extends View {
         }
         float top = card.rect.top - scrollY;
         float right = card.rect.right - 14f * u;
-        return x >= right - 34f * u && x <= right + 4f * u
-                && y >= top + 10f * u && y <= top + 34f * u;
+        return x >= right - 46f * u && x <= right - 8f * u
+                && y >= top + 9f * u && y <= top + 35f * u;
     }
 
     private void drawLaunch(Canvas canvas, float alpha) {

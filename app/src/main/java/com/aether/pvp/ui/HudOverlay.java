@@ -216,7 +216,8 @@ public final class HudOverlay {
         active.clear();
         rows.clear();
         for (Module m : Content.all()) {
-            if (!m.enabled || m.isAction() || m.id.startsWith("hud.")) {
+            if (!m.enabled || m.isAction() || m.id.startsWith("hud.")
+                    || m.id.startsWith("config.")) {
                 continue;
             }
             pRow.setTextSize(8.5f * u);
@@ -393,7 +394,7 @@ public final class HudOverlay {
         if (m == null || !m.enabled) {
             return;
         }
-        float key = 18f * u;
+        float key = (15f + m.configA * 8f) * u;
         float gap = 3f * u;
         float x = safeLeft + 22f * u;
         float bottom = h - safeBottom - 20f * u;
