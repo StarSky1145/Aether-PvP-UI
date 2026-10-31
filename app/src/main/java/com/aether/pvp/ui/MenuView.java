@@ -39,6 +39,7 @@ public final class MenuView extends View {
     private static final long SCROLLBAR_MS = 1100L;
 
     private final Prefs prefs;
+    private final HudOverlay hud = new HudOverlay();
     private final OverScroller scroller;
     private final int touchSlop;
 
@@ -48,6 +49,15 @@ public final class MenuView extends View {
     private final RectF saveRect = new RectF();
     private final RectF capsuleRect = new RectF();
     private final RectF launchRect = new RectF();
+    private final RectF configPanel = new RectF();
+    private final RectF configClose = new RectF();
+    private final RectF configToggle = new RectF();
+    private final RectF[] configKeys = {new RectF(), new RectF(), new RectF(), new RectF(), new RectF()};
+    private final RectF[] configModes = {new RectF(), new RectF(), new RectF()};
+    private final RectF[] configSliderTracks = {new RectF(), new RectF()};
+    private final RectF[] configAccents = {new RectF(), new RectF(), new RectF(), new RectF()};
+    private final RectF configReset = new RectF();
+    private final RectF configDone = new RectF();
     private final RectF[] tabRects = new RectF[TABS.length];
     private final RectF[] chipRects = {new RectF(), new RectF(), new RectF()};
     private final List<Card> cards = new ArrayList<>();
@@ -96,6 +106,7 @@ public final class MenuView extends View {
     private int pressedTab = -1;
     private int pressedChip = -1;
     private Module pressedModule;
+    private Card pressedCard;
     private Module activeSlider;
     private RectF activeSliderCard;
     private float activeSliderTrackLeft;
@@ -104,6 +115,16 @@ public final class MenuView extends View {
     private float hoverY;
     private boolean hoverActive;
     private boolean drawFailed;
+    private Module configModule;
+    private float configAnim;
+    private int configSlider = -1;
+    private int pressedConfigKey = -1;
+    private int pressedConfigMode = -1;
+    private int pressedConfigAccent = -1;
+    private boolean pressedConfigClose;
+    private boolean pressedConfigToggle;
+    private boolean pressedConfigReset;
+    private boolean pressedConfigDone;
     private VelocityTracker velocityTracker;
 
     private Shader bgShader;
@@ -185,6 +206,10 @@ public final class MenuView extends View {
     }
 
     public boolean handleBack() {
+        if (configModule != null) {
+            closeConfig();
+            return true;
+        }
         if (open) {
             setOpen(false);
             return true;
@@ -236,8 +261,8 @@ public final class MenuView extends View {
         float navLeft = panel.left + 10f * u;
         float navRight = railRight - 11f * u;
         float navTop = panel.top + 76f * u;
-        float itemH = 32f * u;
-        float itemGap = 4f * u;
+        float itemH = 30f * u;
+        float itemGap = 3f * u;
         for (int i = 0; i < count; i++) {
             if (tabRects[i] == null) {
                 tabRects[i] = new RectF();
@@ -268,6 +293,7 @@ public final class MenuView extends View {
         launchRect.set(w * 0.5f - cw * 0.5f, h - bottomMargin - ch - 4f * u,
                 w * 0.5f + cw * 0.5f, h - bottomMargin - 4f * u);
 
+        hud.layout(w, h, u, safeLeft, safeTop, safeRight, safeBottom);
         buildPaints();
         buildBackdrop();
         buildCards();
@@ -443,9 +469,14 @@ public final class MenuView extends View {
         long now = SystemClock.uptimeMillis();
         advance(now);
         drawBackdrop(canvas);
+        float hudAlpha = open ? 0f : (1f - Ui.easeOutCubic(panelAnim));
+        hud.draw(canvas, hudAlpha, now);
 
         if (panelAnim > 0.002f) {
             drawPanel(canvas);
+        }
+        if (configModule != null && configAnim > 0.01f) {
+            drawConfig(canvas);
         }
         if (panelAnim < 0.998f) {
             drawLaunch(canvas, 1f - Ui.easeOutCubic(panelAnim));
@@ -497,6 +528,23 @@ public final class MenuView extends View {
             }
         }
         if (now < toastUntil + 260L) {
+            needsFrame = true;
+        }
+        hud.tick(dt, now);
+        if (panelAnim < 0.998f) {
+            needsFrame = true;
+        }
+        if (configModule != null) {
+            float target = 1f;
+            if (configAnim < target) {
+                configAnim += (target - configAnim) * Math.min(1f, dt * 16f);
+                if (target - configAnim < 0.002f) {
+                    configAnim = target;
+                }
+            }
+            needsFrame = true;
+        } else if (configAnim > 0f) {
+            configAnim = Math.max(0f, configAnim - dt * 12f);
             needsFrame = true;
         }
         if (needsFrame) {
@@ -920,9 +968,21 @@ public final class MenuView extends View {
         } else if (m.hasSlider) {
             drawSlider(canvas, r, m, on);
             drawToggle(canvas, r.right - 14f * u - 30f * u, r.top + 14f * u, m);
+            drawConfigHint(canvas, r, true);
         } else {
             drawBadge(canvas, r.left + 14f * u, r.top + 50f * u, m.badge);
             drawToggle(canvas, r.right - 14f * u - 30f * u, r.top + 14f * u, m);
+            drawConfigHint(canvas, r, false);
+        }
+    }
+
+    private void drawConfigHint(Canvas canvas, RectF r, boolean compact) {
+        textPaint.set(pKey);
+        textPaint.setColor(Theme.TEXT_FAINT);
+        if (compact) {
+            canvas.drawText("CONFIG", r.left + 14f * u, r.top + 67f * u, textPaint);
+        } else {
+            Ui.textRight(canvas, "CONFIG", r.right - 15f * u, r.top + 65f * u, textPaint);
         }
     }
 
@@ -1089,8 +1149,478 @@ public final class MenuView extends View {
         canvas.drawRoundRect(saveRect, 11f * u, 11f * u, saveBorder);
         textPaint.set(pButton);
         textPaint.setColor(hover || pressedSave ? Theme.TEXT : Theme.TEXT_DIM);
-        Ui.textCenter(canvas, "SAVE PROFILE", saveRect.centerX(),
-                saveRect.centerY() + 2.1f * u, textPaint);
+        Ui.textCenter(canvas, tab == Tab.HUD ? "PREVIEW HUD" : "SAVE PROFILE",
+                saveRect.centerX(), saveRect.centerY() + 2.1f * u, textPaint);
+    }
+
+    private void openConfig(Module module) {
+        if (module == null || module.isAction()) {
+            return;
+        }
+        configModule = module;
+        configAnim = 0f;
+        configSlider = -1;
+        clearConfigPresses();
+        layoutConfig();
+        invalidate();
+    }
+
+    private void closeConfig() {
+        configModule = null;
+        configAnim = 0f;
+        configSlider = -1;
+        clearConfigPresses();
+        invalidate();
+    }
+
+    private void layoutConfig() {
+        if (configModule == null) {
+            return;
+        }
+        float mw = Math.min(520f * u, panel.width() - 34f * u);
+        float mh = Math.min(318f * u, panel.height() - 22f * u);
+        float left = panel.centerX() - mw * 0.5f;
+        float top = panel.centerY() - mh * 0.5f;
+        configPanel.set(left, top, left + mw, top + mh);
+
+        configClose.set(configPanel.right - 39f * u, configPanel.top + 14f * u,
+                configPanel.right - 13f * u, configPanel.top + 40f * u);
+        configToggle.set(configPanel.right - 74f * u, configPanel.top + 27f * u,
+                configPanel.right - 44f * u, configPanel.top + 42f * u);
+
+        float bodyTop = configPanel.top + 96f * u;
+        float footerTop = configPanel.bottom - 34f * u;
+        float rowH = (footerTop - bodyTop) / 5f;
+        float controlX = configPanel.left + 100f * u;
+        float valueRight = configPanel.right - 24f * u;
+
+        float keyY = bodyTop + rowH * 0.5f - 10f * u;
+        float kw = 34f * u;
+        for (int i = 0; i < 5; i++) {
+            configKeys[i].set(controlX + i * (kw + 4f * u), keyY,
+                    controlX + i * (kw + 4f * u) + kw, keyY + 20f * u);
+        }
+
+        float modeY = bodyTop + rowH * 1.5f - 10f * u;
+        float mwChip = 62f * u;
+        for (int i = 0; i < 3; i++) {
+            configModes[i].set(controlX + i * (mwChip + 4f * u), modeY,
+                    controlX + i * (mwChip + 4f * u) + mwChip, modeY + 20f * u);
+        }
+
+        for (int i = 0; i < 2; i++) {
+            float cy = bodyTop + rowH * (2.5f + i);
+            configSliderTracks[i].set(controlX, cy - 10f * u,
+                    valueRight - 44f * u, cy + 10f * u);
+        }
+
+        float accentY = bodyTop + rowH * 4.5f;
+        for (int i = 0; i < 4; i++) {
+            float cx = controlX + 8f * u + i * 25f * u;
+            configAccents[i].set(cx - 9f * u, accentY - 9f * u,
+                    cx + 9f * u, accentY + 9f * u);
+        }
+
+        configReset.set(configPanel.left + 24f * u, footerTop + 8f * u,
+                configPanel.left + 128f * u, footerTop + 28f * u);
+        configDone.set(configPanel.right - 84f * u, footerTop + 7f * u,
+                configPanel.right - 24f * u, footerTop + 27f * u);
+    }
+
+    private void drawConfig(Canvas canvas) {
+        if (configModule == null) {
+            return;
+        }
+        layoutConfig();
+        Module m = configModule;
+        float e = Ui.easeOutCubic(configAnim);
+        int layerAlpha = Math.round(255f * e);
+        canvas.drawRect(0f, 0f, w, h, Ui.fill(Ui.alpha(0xFF000000, 0.54f * e)));
+        canvas.saveLayerAlpha(null, layerAlpha);
+
+        for (int i = 5; i >= 1; i--) {
+            RectF shadow = new RectF(configPanel);
+            shadow.inset(-i * 4f * u, -i * 4f * u);
+            canvas.drawRoundRect(shadow, 20f * u + i * 4f * u,
+                    20f * u + i * 4f * u, Ui.fill(Ui.alpha(0xFF000000, 0.035f / i)));
+        }
+        Paint fill = Ui.fill(0xFFFFFFFF);
+        fill.setShader(new LinearGradient(configPanel.left, configPanel.top,
+                configPanel.right, configPanel.bottom, 0xFA0D0F16, 0xFA080A0F,
+                Shader.TileMode.CLAMP));
+        canvas.drawRoundRect(configPanel, 18f * u, 18f * u, fill);
+        Paint border = Ui.stroke(0xFFFFFFFF, 1f);
+        border.setShader(new LinearGradient(configPanel.left, configPanel.top,
+                configPanel.right, configPanel.bottom,
+                new int[]{Ui.alpha(Theme.LAVENDER, 0.46f), 0x18FFFFFF,
+                        Ui.alpha(Theme.MINT, 0.30f)}, null, Shader.TileMode.CLAMP));
+        canvas.drawRoundRect(configPanel, 18f * u, 18f * u, border);
+
+        float left = configPanel.left + 24f * u;
+        textPaint.set(pKicker);
+        textPaint.setColor(Theme.LAVENDER);
+        canvas.drawText(tab.kicker + " / MODULE", left, configPanel.top + 22f * u, textPaint);
+
+        textPaint.set(pTitle);
+        textPaint.setTextSize(19f * u);
+        textPaint.setTypeface(Theme.light);
+        textPaint.setColor(Theme.TEXT);
+        String title = Ui.ellipsize(m.name, textPaint,
+                configToggle.left - left - 14f * u);
+        canvas.drawText(title, left, configPanel.top + 50f * u, textPaint);
+
+        textPaint.set(pCardDesc);
+        textPaint.setTextSize(7.2f * u);
+        textPaint.setTypeface(Theme.regular);
+        textPaint.setColor(Theme.TEXT_DIM);
+        String desc = Ui.ellipsize(m.description, textPaint,
+                configPanel.width() - 48f * u);
+        canvas.drawText(desc, left, configPanel.top + 67f * u, textPaint);
+
+        textPaint.set(pKey);
+        textPaint.setColor(Theme.TEXT_FAINT);
+        Ui.textRight(canvas, "ENABLED", configToggle.left - 7f * u,
+                configToggle.centerY() + 2f * u, textPaint);
+        drawToggle(canvas, configToggle.left, configToggle.top, m);
+
+        boolean closeHover = hoverActive && configClose.contains(hoverX, hoverY);
+        if (pressedConfigClose || closeHover) {
+            canvas.drawCircle(configClose.centerX(), configClose.centerY(),
+                    configClose.width() * 0.5f, Ui.fill(0x0BFFFFFF));
+        }
+        Paint closeRing = Ui.stroke(0x16FFFFFF, 1f);
+        canvas.drawCircle(configClose.centerX(), configClose.centerY(),
+                configClose.width() * 0.5f, closeRing);
+        iconPaint.setStyle(Paint.Style.STROKE);
+        iconPaint.setColor(closeHover || pressedConfigClose ? Theme.TEXT : Theme.TEXT_DIM);
+        Icons.draw(canvas, Icons.CLOSE, configClose.centerX(), configClose.centerY(),
+                9f * u, iconPaint);
+
+        Paint rule = Ui.stroke(0x0FFFFFFF, 1f);
+        canvas.drawLine(left, configPanel.top + 80f * u,
+                configPanel.right - 24f * u, configPanel.top + 80f * u, rule);
+
+        float bodyTop = configPanel.top + 96f * u;
+        float footerTop = configPanel.bottom - 34f * u;
+        float rowH = (footerTop - bodyTop) / 5f;
+        float controlX = configPanel.left + 100f * u;
+
+        textPaint.set(pKey);
+        textPaint.setColor(Theme.TEXT_FAINT);
+        canvas.drawText("KEYBIND", left, bodyTop + rowH * 0.5f + 2f * u, textPaint);
+        String[] keys = {"NONE", "R", "V", "G", "M4"};
+        for (int i = 0; i < 5; i++) {
+            drawConfigChip(canvas, configKeys[i], keys[i],
+                    m.keybind.equals(keys[i]), i == pressedConfigKey);
+        }
+
+        canvas.drawText("MODE", left, bodyTop + rowH * 1.5f + 2f * u, textPaint);
+        String[] modes = modesFor(m);
+        for (int i = 0; i < 3; i++) {
+            drawConfigChip(canvas, configModes[i], modes[i],
+                    m.mode == i, i == pressedConfigMode);
+        }
+
+        drawConfigSlider(canvas, m, 0, bodyTop + rowH * 2.5f, controlX);
+        drawConfigSlider(canvas, m, 1, bodyTop + rowH * 3.5f, controlX);
+
+        float accentY = bodyTop + rowH * 4.5f;
+        canvas.drawText("ACCENT", left, accentY + 2f * u, textPaint);
+        for (int i = 0; i < 4; i++) {
+            int color = accentAt(i);
+            float cx = configAccents[i].centerX();
+            float cy = configAccents[i].centerY();
+            if (m.accent == i || i == pressedConfigAccent) {
+                canvas.drawCircle(cx, cy, 9f * u, Ui.fill(Ui.alpha(color, 0.13f)));
+                canvas.drawCircle(cx, cy, 8f * u, Ui.stroke(Ui.alpha(color, 0.72f), 1f));
+            }
+            canvas.drawCircle(cx, cy, 4.8f * u, Ui.fill(Ui.alpha(color, 0.9f)));
+        }
+
+        Paint footerRule = Ui.stroke(0x0FFFFFFF, 1f);
+        canvas.drawLine(left, footerTop, configPanel.right - 24f * u, footerTop, footerRule);
+        boolean resetHover = hoverActive && configReset.contains(hoverX, hoverY);
+        textPaint.set(pButton);
+        textPaint.setColor(resetHover || pressedConfigReset ? Theme.ROSE : Theme.TEXT_DIM);
+        canvas.drawText("RESET MODULE", configReset.left,
+                configReset.centerY() + 2f * u, textPaint);
+        drawConfigButton(canvas, configDone, "DONE", pressedConfigDone);
+
+        canvas.restore();
+    }
+
+    private void drawConfigChip(Canvas canvas, RectF r, String label,
+                                boolean selected, boolean pressed) {
+        boolean hover = hoverActive && r.contains(hoverX, hoverY);
+        canvas.drawRoundRect(r, 5f * u, 5f * u,
+                Ui.fill(selected ? 0x1AC9B8FF : (pressed ? 0x10FFFFFF : (hover ? 0x08FFFFFF : 0x04FFFFFF))));
+        canvas.drawRoundRect(r, 5f * u, 5f * u,
+                Ui.stroke(selected ? Ui.alpha(Theme.LAVENDER, 0.44f) : 0x12FFFFFF, 1f));
+        textPaint.set(pKey);
+        textPaint.setColor(selected ? Theme.TEXT : Theme.TEXT_DIM);
+        Ui.textCenter(canvas, label, r.centerX(), r.centerY() + 2f * u, textPaint);
+    }
+
+    private void drawConfigButton(Canvas canvas, RectF r, String label, boolean pressed) {
+        boolean hover = hoverActive && r.contains(hoverX, hoverY);
+        canvas.drawRoundRect(r, 7f * u, 7f * u,
+                Ui.fill(pressed ? 0x12FFFFFF : (hover ? 0x0AFFFFFF : 0x06FFFFFF)));
+        canvas.drawRoundRect(r, 7f * u, 7f * u,
+                Ui.stroke(hover || pressed ? Ui.alpha(Theme.LAVENDER, 0.40f) : 0x1AFFFFFF, 1f));
+        textPaint.set(pButton);
+        textPaint.setColor(hover || pressed ? Theme.TEXT : Theme.TEXT_DIM);
+        Ui.textCenter(canvas, label, r.centerX(), r.centerY() + 2f * u, textPaint);
+    }
+
+    private void drawConfigSlider(Canvas canvas, Module m, int index, float centerY, float left) {
+        RectF track = configSliderTracks[index];
+        float right = track.right;
+        float ratio = configSliderRatio(m, index);
+        String label = index == 0 ? sliderLabel(m) : "OPACITY";
+        textPaint.set(pKey);
+        textPaint.setColor(Theme.TEXT_FAINT);
+        canvas.drawText(label, configPanel.left + 24f * u, centerY + 2f * u, textPaint);
+
+        canvas.drawRoundRect(left, centerY - 1f * u, right, centerY + 1f * u,
+                1f * u, 1f * u, Ui.fill(0x14FFFFFF));
+        if (ratio > 0f) {
+            Paint fill = Ui.fill(0xFFFFFFFF);
+            fill.setShader(new LinearGradient(left, 0f, right, 0f,
+                    Ui.alpha(Theme.LAVENDER, 0.9f), Ui.alpha(Theme.MINT, 0.8f),
+                    Shader.TileMode.CLAMP));
+            canvas.drawRoundRect(left, centerY - 1f * u, left + (right - left) * ratio,
+                    centerY + 1f * u, 1f * u, 1f * u, fill);
+        }
+        float tx = left + (right - left) * ratio;
+        canvas.drawCircle(tx, centerY, 7f * u, Ui.fill(Ui.alpha(Theme.LAVENDER, 0.13f)));
+        canvas.drawCircle(tx, centerY, 4.2f * u, Ui.fill(Theme.TEXT));
+        canvas.drawCircle(tx, centerY, 1.6f * u, Ui.fill(Theme.LAVENDER));
+
+        textPaint.set(pValue);
+        textPaint.setColor(Theme.TEXT);
+        String value = configSliderLabel(m, index);
+        Ui.textRight(canvas, value, configPanel.right - 24f * u, centerY + 2.3f * u, textPaint);
+    }
+
+    private String[] modesFor(Module m) {
+        if (m.id.equals("hud.watermark")) {
+            return new String[]{"MINIMAL", "GLASS", "BOLD"};
+        }
+        if (m.id.equals("hud.arraylist")) {
+            return new String[]{"LENGTH", "A-Z", "CATEGORY"};
+        }
+        if (m.id.equals("hud.notifications")) {
+            return new String[]{"STACK", "MINIMAL", "COMPACT"};
+        }
+        if (m.id.equals("hud.targethud")) {
+            return new String[]{"LINE", "GLASS", "BOLD"};
+        }
+        if (m.id.equals("hud.keystrokes")) {
+            return new String[]{"WASD", "BAR", "MINIMAL"};
+        }
+        if (m.id.equals("hud.coordinates")) {
+            return new String[]{"XYZ", "MINIMAL", "DETAILED"};
+        }
+        switch (tab) {
+            case COMBAT:
+            case MOVEMENT:
+                return new String[]{"SILENT", "SMOOTH", "LEGIT"};
+            case VISUALS:
+                return new String[]{"SOFT", "BALANCED", "VIVID"};
+            case PLAYER:
+                return new String[]{"LOCAL", "SYNC", "MANUAL"};
+            case CONFIG:
+                return new String[]{"DEFAULT", "RANKED", "VANILLA"};
+            default:
+                return new String[]{"NORMAL", "SMOOTH", "INSTANT"};
+        }
+    }
+
+    private String sliderLabel(Module m) {
+        if (m.hasSlider) {
+            return "VALUE";
+        }
+        if (m.id.equals("hud.watermark")) {
+            return "SCALE";
+        }
+        if (m.id.equals("hud.arraylist")) {
+            return "WIDTH";
+        }
+        if (m.id.equals("hud.notifications")) {
+            return "DURATION";
+        }
+        if (m.id.equals("hud.targethud") || m.id.equals("hud.keystrokes")) {
+            return "SCALE";
+        }
+        if (m.id.equals("hud.coordinates")) {
+            return "OFFSET";
+        }
+        return "RANGE";
+    }
+
+    private float configSliderRatio(Module m, int index) {
+        if (index == 0 && m.hasSlider) {
+            return m.ratio();
+        }
+        return index == 0 ? m.configA : m.configB;
+    }
+
+    private String configSliderLabel(Module m, int index) {
+        if (index == 0 && m.hasSlider) {
+            return m.valueLabel();
+        }
+        return Math.round(configSliderRatio(m, index) * 100f) + "%";
+    }
+
+    private int accentAt(int index) {
+        switch (index) {
+            case 1:
+                return Theme.MINT;
+            case 2:
+                return Theme.ROSE;
+            case 3:
+                return Theme.TEXT;
+            default:
+                return Theme.LAVENDER;
+        }
+    }
+
+    private void configDown(float x, float y) {
+        clearConfigPresses();
+        configSlider = -1;
+        if (!configPanel.contains(x, y)) {
+            closeConfig();
+            return;
+        }
+        if (configClose.contains(x, y)) {
+            pressedConfigClose = true;
+        } else if (configToggle.contains(x, y)) {
+            pressedConfigToggle = true;
+        } else if (configReset.contains(x, y)) {
+            pressedConfigReset = true;
+        } else if (configDone.contains(x, y)) {
+            pressedConfigDone = true;
+        } else {
+            for (int i = 0; i < 5; i++) {
+                if (configKeys[i].contains(x, y)) {
+                    pressedConfigKey = i;
+                    return;
+                }
+            }
+            for (int i = 0; i < 3; i++) {
+                if (configModes[i].contains(x, y)) {
+                    pressedConfigMode = i;
+                    return;
+                }
+            }
+            for (int i = 0; i < 4; i++) {
+                if (configAccents[i].contains(x, y)) {
+                    pressedConfigAccent = i;
+                    return;
+                }
+            }
+            for (int i = 0; i < 2; i++) {
+                if (configSliderTracks[i].contains(x, y)) {
+                    configSlider = i;
+                    updateConfigSlider(x);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void configUp(float x, float y) {
+        Module m = configModule;
+        if (m == null) {
+            return;
+        }
+        if (configSlider >= 0) {
+            prefs.saveConfig(m);
+            if (m.hasSlider) {
+                prefs.saveValue(m);
+            }
+            configSlider = -1;
+        }
+        if (pressedConfigClose && configClose.contains(x, y)) {
+            closeConfig();
+            return;
+        }
+        if (pressedConfigToggle && configToggle.contains(x, y)) {
+            activate(m);
+        } else if (pressedConfigReset && configReset.contains(x, y)) {
+            resetConfig(m);
+        } else if (pressedConfigKey >= 0 && configKeys[pressedConfigKey].contains(x, y)) {
+            String[] keys = {"NONE", "R", "V", "G", "M4"};
+            m.keybind = keys[pressedConfigKey];
+            prefs.saveConfig(m);
+            showToast("Keybind set to " + m.keybind);
+        } else if (pressedConfigMode >= 0 && configModes[pressedConfigMode].contains(x, y)) {
+            m.mode = pressedConfigMode;
+            prefs.saveConfig(m);
+        } else if (pressedConfigAccent >= 0 && configAccents[pressedConfigAccent].contains(x, y)) {
+            m.accent = pressedConfigAccent;
+            prefs.saveConfig(m);
+        } else if (pressedConfigDone && configDone.contains(x, y)) {
+            closeConfig();
+        }
+        clearConfigPresses();
+        invalidate();
+    }
+
+    private void updateConfigSlider(float x) {
+        if (configModule == null || configSlider < 0 || configSlider > 1) {
+            return;
+        }
+        RectF track = configSliderTracks[configSlider];
+        float width = track.width();
+        if (width <= 1f) {
+            return;
+        }
+        float ratio = Ui.clamp((x - track.left) / width, 0f, 1f);
+        Module m = configModule;
+        if (configSlider == 0 && m.hasSlider) {
+            m.setFromRatio(ratio);
+        } else if (configSlider == 0) {
+            m.configA = ratio;
+        } else {
+            m.configB = ratio;
+        }
+        invalidate();
+    }
+
+    private void resetConfig(Module m) {
+        m.keybind = "NONE";
+        m.mode = 0;
+        m.accent = 0;
+        m.configA = 0.5f;
+        m.configB = 0.65f;
+        if (m.hasSlider) {
+            m.setFromRatio(0.5f);
+            prefs.saveValue(m);
+        }
+        prefs.saveConfig(m);
+        showToast(m.name + " reset");
+        hud.push("Module reset", m.name + " returned to defaults", Theme.TEXT_DIM);
+    }
+
+    private void clearConfigPresses() {
+        pressedConfigClose = false;
+        pressedConfigToggle = false;
+        pressedConfigKey = -1;
+        pressedConfigMode = -1;
+        pressedConfigAccent = -1;
+        pressedConfigReset = false;
+        pressedConfigDone = false;
+    }
+
+    private boolean toggleHit(Card card, float x, float y) {
+        if (card == null) {
+            return false;
+        }
+        float top = card.rect.top - scrollY;
+        float right = card.rect.right - 14f * u;
+        return x >= right - 34f * u && x <= right + 4f * u
+                && y >= top + 10f * u && y <= top + 34f * u;
     }
 
     private void drawLaunch(Canvas canvas, float alpha) {
@@ -1169,6 +1699,8 @@ public final class MenuView extends View {
         prefs.setMenuOpen(value);
         if (open) {
             pageAnim = 0f;
+        } else {
+            hud.push("ClickGUI hidden", "HUD overlay active · local session", Theme.LAVENDER);
         }
         postInvalidateOnAnimation();
     }
@@ -1204,6 +1736,9 @@ public final class MenuView extends View {
         }
         m.enabled = !m.enabled;
         prefs.save(m);
+        hud.push(m.name + (m.enabled ? " enabled" : " disabled"),
+                "Local preview · " + (m.enabled ? "active" : "inactive"),
+                m.enabled ? Theme.MINT : Theme.TEXT_FAINT);
         showToast(m.name + (m.enabled ? " enabled" : " disabled"));
         invalidate();
     }
@@ -1239,7 +1774,9 @@ public final class MenuView extends View {
     private void saveProfile() {
         for (Module m : Content.all()) {
             prefs.save(m);
+            prefs.saveConfig(m);
         }
+        hud.push("Profile saved", "All module settings stored locally", Theme.MINT);
         showToast("Configuration saved locally");
     }
 
@@ -1250,6 +1787,7 @@ public final class MenuView extends View {
         pressedTab = -1;
         pressedChip = -1;
         pressedModule = null;
+        pressedCard = null;
     }
 
     @Override
@@ -1267,6 +1805,11 @@ public final class MenuView extends View {
                 }
                 velocityTracker = VelocityTracker.obtain();
                 velocityTracker.addMovement(event);
+                if (configModule != null) {
+                    configDown(x, y);
+                    invalidate();
+                    return true;
+                }
                 if (!open) {
                     pressedLaunch = launchRect.contains(x, y);
                     return true;
@@ -1303,6 +1846,7 @@ public final class MenuView extends View {
                                 updateSlider(x);
                             } else {
                                 pressedModule = card.module;
+                                pressedCard = card;
                             }
                         }
                     }
@@ -1313,6 +1857,12 @@ public final class MenuView extends View {
             case MotionEvent.ACTION_MOVE: {
                 if (velocityTracker != null) {
                     velocityTracker.addMovement(event);
+                }
+                if (configModule != null) {
+                    if (configSlider >= 0) {
+                        updateConfigSlider(x);
+                    }
+                    return true;
                 }
                 if (!open) {
                     return true;
@@ -1342,6 +1892,11 @@ public final class MenuView extends View {
                 if (velocityTracker != null) {
                     velocityTracker.addMovement(event);
                 }
+                if (configModule != null) {
+                    configUp(x, y);
+                    recycleVelocity();
+                    return true;
+                }
                 if (!open) {
                     if (pressedLaunch && launchRect.contains(x, y)) {
                         setOpen(true);
@@ -1362,7 +1917,11 @@ public final class MenuView extends View {
                     if (pressedClose && closeRect.contains(x, y)) {
                         setOpen(false);
                     } else if (pressedSave && saveRect.contains(x, y)) {
-                        saveProfile();
+                        if (tab == Tab.HUD) {
+                            setOpen(false);
+                        } else {
+                            saveProfile();
+                        }
                     } else if (pressedTab >= 0 && tabRects[pressedTab].contains(x, y)) {
                         selectTab(pressedTab);
                     } else if (pressedChip >= 0 && chipRects[pressedChip].contains(x, y)) {
@@ -1371,7 +1930,12 @@ public final class MenuView extends View {
                         buildCards();
                         invalidate();
                     } else if (pressedModule != null) {
-                        activate(pressedModule);
+                        if (pressedModule.isAction()
+                                || (pressedCard != null && toggleHit(pressedCard, x, y))) {
+                            activate(pressedModule);
+                        } else {
+                            openConfig(pressedModule);
+                        }
                     }
                 }
                 clearPresses();
@@ -1379,6 +1943,10 @@ public final class MenuView extends View {
                 return true;
             }
             case MotionEvent.ACTION_CANCEL: {
+                if (configModule != null) {
+                    configSlider = -1;
+                    clearConfigPresses();
+                }
                 if (activeSlider != null) {
                     prefs.saveValue(activeSlider);
                     activeSlider = null;
@@ -1463,6 +2031,7 @@ public final class MenuView extends View {
         if (index < 0 || index >= TABS.length || index == tabIndex) {
             return;
         }
+        closeConfig();
         tabIndex = index;
         tab = TABS[index];
         filter = 0;

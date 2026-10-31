@@ -9,8 +9,9 @@ public enum Tab {
     COMBAT("Combat", "COMBAT / 01", "Precision, distilled for the 1.8 duel meta.", Icons.SWORD),
     MOVEMENT("Movement", "MOVEMENT / 02", "Momentum with a lighter footprint.", Icons.WIND),
     VISUALS("Visuals", "VISUALS / 03", "Atmosphere and information, restrained.", Icons.EYE),
-    PLAYER("Player", "PLAYER / 04", "Identity, teams and quiet utilities.", Icons.USER),
-    CONFIG("Config", "CONFIG / 05", "Profiles for every tempo of play.", Icons.SLIDERS);
+    HUD("HUD", "INTERFACE / 04", "What remains when the menu is gone.", Icons.LAYOUT),
+    PLAYER("Player", "PLAYER / 05", "Identity, teams and quiet utilities.", Icons.USER),
+    CONFIG("Config", "CONFIG / 06", "Profiles for every tempo of play.", Icons.SLIDERS);
 
     public final String label;
     public final String kicker;

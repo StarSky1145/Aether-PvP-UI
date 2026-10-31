@@ -23,6 +23,13 @@ public final class Module {
 
     public float toggleAnim;
 
+    /** Interface-only extras used by the module config sheet. */
+    public String keybind = "NONE";
+    public int mode;
+    public int accent;
+    public float configA = 0.5f;
+    public float configB = 0.65f;
+
     private Module(String id, String name, String description, String badge,
                    boolean enabled, boolean hasSlider, float value, float min,
                    float max, float step, String suffix, String actionLabel) {

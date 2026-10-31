@@ -23,6 +23,11 @@ public final class Prefs {
         for (Module m : Content.all()) {
             m.enabled = sp.getBoolean(m.id + ".on", m.enabled);
             m.value = sp.getFloat(m.id + ".value", m.value);
+            m.keybind = sp.getString(m.id + ".key", m.keybind);
+            m.mode = sp.getInt(m.id + ".mode", m.mode);
+            m.accent = sp.getInt(m.id + ".accent", m.accent);
+            m.configA = sp.getFloat(m.id + ".a", m.configA);
+            m.configB = sp.getFloat(m.id + ".b", m.configB);
             m.toggleAnim = m.enabled ? 1f : 0f;
         }
     }
@@ -36,6 +41,16 @@ public final class Prefs {
 
     public void saveValue(Module m) {
         sp.edit().putFloat(m.id + ".value", m.value).apply();
+    }
+
+    public void saveConfig(Module m) {
+        sp.edit()
+                .putString(m.id + ".key", m.keybind)
+                .putInt(m.id + ".mode", m.mode)
+                .putInt(m.id + ".accent", m.accent)
+                .putFloat(m.id + ".a", m.configA)
+                .putFloat(m.id + ".b", m.configB)
+                .apply();
     }
 
     public int activeTab() {
@@ -67,11 +82,21 @@ public final class Prefs {
                     || m.id.equals("visual.nametags")
                     || m.id.equals("visual.ambience")
                     || m.id.equals("visual.hud")
+                    || m.id.equals("hud.watermark")
+                    || m.id.equals("hud.arraylist")
+                    || m.id.equals("hud.notifications")
+                    || m.id.equals("hud.targethud")
+                    || m.id.equals("hud.coordinates")
                     || m.id.equals("player.friends")
                     || m.id.equals("player.teams")
                     || m.id.equals("config.autosave");
             m.toggleAnim = m.enabled ? 1f : 0f;
             m.value = defaultValue(m.id, m.value);
+            m.keybind = "NONE";
+            m.mode = 0;
+            m.accent = 0;
+            m.configA = 0.5f;
+            m.configB = 0.65f;
         }
     }
 

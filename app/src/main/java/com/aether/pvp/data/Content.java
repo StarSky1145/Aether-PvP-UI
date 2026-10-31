@@ -15,6 +15,7 @@ public final class Content {
     private static final List<Module> COMBAT = new ArrayList<>();
     private static final List<Module> MOVEMENT = new ArrayList<>();
     private static final List<Module> VISUALS = new ArrayList<>();
+    private static final List<Module> HUD = new ArrayList<>();
     private static final List<Module> PLAYER = new ArrayList<>();
     private static final List<Module> CONFIG = new ArrayList<>();
 
@@ -58,6 +59,23 @@ public final class Content {
         VISUALS.add(Module.toggle("visual.target", "TargetHUD",
                 "Single-target telemetry.", "STYLE", false));
 
+        Module watermark = Module.toggle("hud.watermark", "Watermark",
+                "Identity, frame rate and latency, kept quiet.", "TOP LEFT", true);
+        watermark.mode = 1;
+        HUD.add(watermark);
+        HUD.add(Module.toggle("hud.arraylist", "ArrayList",
+                "Every active module, ranked by presence.", "RIGHT EDGE", true));
+        HUD.add(Module.toggle("hud.notifications", "Notifications",
+                "Short, legible confirmations that never shout.", "STACK", true));
+        Module targethud = Module.toggle("hud.targethud", "Target HUD",
+                "A single opponent, reduced to what matters.", "COMBAT", true);
+        targethud.mode = 1;
+        HUD.add(targethud);
+        HUD.add(Module.toggle("hud.keystrokes", "Keystrokes",
+                "Movement, at the edge of vision.", "WASD", false));
+        HUD.add(Module.toggle("hud.coordinates", "Coordinates",
+                "A precise positional readout.", "XYZ", true));
+
         PLAYER.add(Module.toggle("player.friends", "Friends",
                 "Trusted identities, kept in sync.", "SYNC", true));
         PLAYER.add(Module.toggle("player.teams", "Teams",
@@ -96,6 +114,8 @@ public final class Content {
                 return Collections.unmodifiableList(MOVEMENT);
             case VISUALS:
                 return Collections.unmodifiableList(VISUALS);
+            case HUD:
+                return Collections.unmodifiableList(HUD);
             case PLAYER:
                 return Collections.unmodifiableList(PLAYER);
             case CONFIG:
@@ -109,9 +129,19 @@ public final class Content {
         out.addAll(COMBAT);
         out.addAll(MOVEMENT);
         out.addAll(VISUALS);
+        out.addAll(HUD);
         out.addAll(PLAYER);
         out.addAll(CONFIG);
         return out;
+    }
+
+    public static Module find(String id) {
+        for (Module m : all()) {
+            if (m.id.equals(id)) {
+                return m;
+            }
+        }
+        return null;
     }
 
     public static int activeCount(Tab tab) {

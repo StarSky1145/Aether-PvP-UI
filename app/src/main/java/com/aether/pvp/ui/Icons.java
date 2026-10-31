@@ -18,6 +18,7 @@ public final class Icons {
     public static final int CHECK = 9;
     public static final int ARROW_RIGHT = 10;
     public static final int LOCK = 11;
+    public static final int LAYOUT = 12;
 
     private Icons() {
     }
