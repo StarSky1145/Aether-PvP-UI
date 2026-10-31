@@ -20,11 +20,13 @@ no image assets, no external UI library.
 — 278 KB, debug-signed, minSdk 26 / targetSdk 35.
 
 ```
-SHA-256  998c30e66a539b96ac26beed31ff0ec4341ea0593503d8362fc3d80696410438
+SHA-256  90f20a6f9f9e26afe30af34e04e3045c0679cc5e3cccaa161ef1cace062bccf8
 ```
 
 > The release is debug-signed for direct sideloading. Android may ask you to
-> allow installs from your browser or file manager.
+> allow installs from your browser or file manager. If an older AETHER build
+> was signed with a different debug key, uninstall it once; this release pins a
+> stable debug key for subsequent updates.
 
 ## Design
 
