@@ -20,7 +20,7 @@ no image assets, no external UI library.
 — 264 KB, debug-signed, minSdk 26 / targetSdk 35.
 
 ```
-SHA-256  4587e5d7219ae16f3e5655fdd806df859c8473330c4da299790b3e1f7cc04f18
+SHA-256  62508d780f796d290958a18885ef21ff9e60531d7d61034fcf29299ff30bb8e2
 ```
 
 > The release is debug-signed for direct sideloading. Android may ask you to
