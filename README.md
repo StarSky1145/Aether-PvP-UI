@@ -14,6 +14,18 @@ no image assets, no external UI library.
 > memory, anti-cheat or network code. Module names and toggle states are local
 > mock data used to demonstrate the UI. Every setting is stored on-device.
 
+## Download
+
+[**AETHER-1.0.0-debug.apk**](https://github.com/StarSky1145/Aether-PvP-UI/releases/download/v1.0.0/AETHER-1.0.0-debug.apk)
+— 264 KB, debug-signed, minSdk 26 / targetSdk 35.
+
+```
+SHA-256  4587e5d7219ae16f3e5655fdd806df859c8473330c4da299790b3e1f7cc04f18
+```
+
+> The release is debug-signed for direct sideloading. Android may ask you to
+> allow installs from your browser or file manager.
+
 ## Design
 
 - **Palette** — obsidian `#07080C`, smoked panel `#0B0D13`, lavender `#C9B8FF`, mint `#9BE8DD`, warm white `#F4F2F8`.
