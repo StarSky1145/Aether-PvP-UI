@@ -33,6 +33,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Cache debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: aether-debug-keystore-v1
+
       - name: Build
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 

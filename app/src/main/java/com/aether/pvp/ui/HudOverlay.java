@@ -289,9 +289,10 @@ public final class HudOverlay {
         card.set(centerX - width * 0.5f, top, centerX + width * 0.5f, top + height);
         int accent = accent(m);
         canvas.saveLayerAlpha(null, moduleAlpha(m));
-        if (m.mode == 1) {
+        if (m.mode >= 1) {
             canvas.drawRoundRect(card, 11f * u, 11f * u, Ui.fill(0xB80A0C12));
-            Paint border = Ui.stroke(Ui.alpha(Theme.TEXT, 0.13f), 1f);
+            Paint border = Ui.stroke(m.mode == 2 ? Ui.alpha(accent, 0.42f)
+                    : Ui.alpha(Theme.TEXT, 0.13f), 1f);
             canvas.drawRoundRect(card, 11f * u, 11f * u, border);
         }
         float avatarX = card.left + 17f * u * scale;
@@ -300,7 +301,7 @@ public final class HudOverlay {
         Paint avatar = Ui.stroke(Ui.alpha(accent, 0.9f), 1.2f * u);
         canvas.drawCircle(avatarX, avatarY, 5f * u * scale, avatar);
         canvas.drawCircle(avatarX, avatarY - 2.5f * u * scale, 2f * u * scale, avatar);
-        pName.setTextSize(9f * u * scale);
+        pName.setTextSize((m.mode == 2 ? 10.5f : 9f) * u * scale);
         pName.setColor(Theme.TEXT);
         canvas.drawText("Sora_", card.left + 33f * u * scale, card.top + 15f * u * scale, pName);
         pTiny.setColor(Theme.TEXT_FAINT);
@@ -335,12 +336,13 @@ public final class HudOverlay {
         }
         long life = 4200L + (long) (config.configA * 4200f);
         canvas.saveLayerAlpha(null, moduleAlpha(config));
+        int maxNotes = config.mode == 1 ? 1 : (config.mode == 2 ? 2 : 3);
         float width = Math.min(252f * u, w * 0.31f);
-        float height = 39f * u;
+        float height = (config.mode == 2 ? 34f : 39f) * u;
         float gap = 6f * u;
         float right = w - safeRight - 22f * u;
         float bottom = h - safeBottom - 20f * u;
-        for (int i = 0; i < Math.min(3, notes.size()); i++) {
+        for (int i = 0; i < Math.min(maxNotes, notes.size()); i++) {
             Note note = notes.get(notes.size() - 1 - i);
             long age = now - note.start;
             float in = Ui.clamp(age / 170f, 0f, 1f);
@@ -397,8 +399,13 @@ public final class HudOverlay {
         pValue.setTextSize(6.2f * u);
         pValue.setColor(Theme.TEXT);
         canvas.drawText("128  /  64  /  -302", x + 22f * u, baseline, pValue);
-        pTiny.setColor(Theme.TEXT_FAINT);
-        canvas.drawText("OVERWORLD", x, baseline + 9f * u, pTiny);
+        if (m.mode == 2) {
+            pTiny.setColor(Theme.TEXT_FAINT);
+            canvas.drawText("DIM 0   ·   CHUNK 8 / -19", x, baseline + 9f * u, pTiny);
+        } else if (m.mode == 1) {
+            pTiny.setColor(Theme.TEXT_FAINT);
+            canvas.drawText("OVERWORLD", x, baseline + 9f * u, pTiny);
+        }
         canvas.restore();
     }
 
@@ -412,14 +419,31 @@ public final class HudOverlay {
         float gap = 3f * u;
         float x = safeLeft + 22f * u;
         float bottom = h - safeBottom - 20f * u;
-        float top = bottom - key * 2f - gap;
         int pressed = (int) ((now / 240L) % 4L);
-        drawKey(canvas, x + key + gap, top, key, "W", pressed == 0);
-        drawKey(canvas, x, top + key + gap, key, "A", pressed == 1);
-        drawKey(canvas, x + key + gap, top + key + gap, key, "S", pressed == 2);
-        drawKey(canvas, x + (key + gap) * 2f, top + key + gap, key, "D", pressed == 3);
         pTiny.setColor(Theme.TEXT_FAINT);
-        canvas.drawText("MOVE", x, top - 6f * u, pTiny);
+        if (m.mode == 2) {
+            pKey.setTextSize(8f * u);
+            pKey.setColor(Theme.TEXT_DIM);
+            canvas.drawText("WASD", x, bottom, pKey);
+            pTiny.setColor(Theme.TEXT_FAINT);
+            canvas.drawText("MOVE", x + 27f * u, bottom, pTiny);
+        } else if (m.mode == 1) {
+            float top = bottom - key;
+            drawKey(canvas, x, top, key, "W", pressed == 0);
+            drawKey(canvas, x + key + gap, top, key, "A", pressed == 1);
+            drawKey(canvas, x + (key + gap) * 2f, top, key, "S", pressed == 2);
+            drawKey(canvas, x + (key + gap) * 3f, top, key, "D", pressed == 3);
+            pTiny.setColor(Theme.TEXT_FAINT);
+            canvas.drawText("MOVE", x, top - 6f * u, pTiny);
+        } else {
+            float top = bottom - key * 2f - gap;
+            drawKey(canvas, x + key + gap, top, key, "W", pressed == 0);
+            drawKey(canvas, x, top + key + gap, key, "A", pressed == 1);
+            drawKey(canvas, x + key + gap, top + key + gap, key, "S", pressed == 2);
+            drawKey(canvas, x + (key + gap) * 2f, top + key + gap, key, "D", pressed == 3);
+            pTiny.setColor(Theme.TEXT_FAINT);
+            canvas.drawText("MOVE", x, top - 6f * u, pTiny);
+        }
         canvas.restore();
     }
 
