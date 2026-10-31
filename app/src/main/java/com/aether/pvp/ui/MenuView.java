@@ -231,16 +231,16 @@ public final class MenuView extends View {
                     navTop + i * (itemH + itemGap) + itemH);
         }
 
-        closeRect.set(contentRight - 24f * u, panel.top + 15f * u,
-                contentRight, panel.top + 39f * u);
+        closeRect.set(contentRight - 34f * u, panel.top + 12f * u,
+                contentRight, panel.top + 46f * u);
         float capsuleW = 93f * u;
         capsuleRect.set(closeRect.left - 8f * u - capsuleW, panel.top + 16f * u,
                 closeRect.left - 8f * u, panel.top + 38f * u);
-        saveRect.set(contentRight - 94f * u, footerLineY + 5f * u,
-                contentRight, footerLineY + 27f * u);
+        saveRect.set(contentRight - 94f * u, footerLineY + 3f * u,
+                contentRight, footerLineY + 29f * u);
 
         float chipTop = panel.top + 88f * u;
-        float chipH = 22f * u;
+        float chipH = 24f * u;
         float chipX = contentLeft;
         for (int i = 0; i < 3; i++) {
             float cw = chipWidth(i);
@@ -971,6 +971,8 @@ public final class MenuView extends View {
     }
 
     private void drawScrollFades(Canvas canvas) {
+        long now = SystemClock.uptimeMillis();
+        boolean active = dragging || now - lastScrollAt < 650L;
         if (scrollY > 0.5f) {
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
             p.setShader(new LinearGradient(0f, cardsViewport.top, 0f, cardsViewport.top + 16f * u,
@@ -978,7 +980,7 @@ public final class MenuView extends View {
             canvas.drawRect(cardsViewport.left, cardsViewport.top, cardsViewport.right,
                     cardsViewport.top + 16f * u, p);
         }
-        if (scrollY < maxScroll - 0.5f) {
+        if (active && scrollY < maxScroll - 0.5f) {
             Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
             p.setShader(new LinearGradient(0f, cardsViewport.bottom - 16f * u, 0f,
                     cardsViewport.bottom, 0x000B0D13, 0xF20B0D13, Shader.TileMode.CLAMP));

@@ -19,12 +19,12 @@ no image assets, no external UI library.
 - **Palette** — obsidian `#07080C`, smoked panel `#0B0D13`, lavender `#C9B8FF`, mint `#9BE8DD`, warm white `#F4F2F8`.
 - **Type** — Sora (200/400/500/600) for interface, IBM Plex Mono for metadata.
 - **Motion** — 150–450 ms cubic easing, page fade/rise, animated toggle caps,
-> clipped inertial scrolling, a soft launch capsule when the menu is closed.
+  clipped inertial scrolling, a soft launch capsule when the menu is closed.
 - **Backdrop** — a procedural GLSL aurora with layered value noise, floating
-> dust, grain and vignette; low-poly, quantised ridges sit over it for a subtle
-> Minecraft silhouette.
+  dust, grain and vignette; low-poly, quantised ridges sit over it for a subtle
+  Minecraft silhouette.
 - **Layout** — responsive virtual 800 × 360 dp grid, safe-area aware, locked to
-> landscape. Two-column module grid with a scrollable viewport.
+  landscape. Two-column module grid with a scrollable viewport.
 
 The renderer is deliberately split:
 
@@ -36,8 +36,8 @@ The renderer is deliberately split:
 ## Features
 
 - Five sections: Combat, Movement, Visuals, Player, Config.
-- 30 mock modules with toggles, sliders, keybind badges, filters and search-free
-  quick views (`ALL / ON / OFF`).
+- 30 mock modules with toggles, sliders, key hints, and quick filters
+  (`ALL / ON / OFF`).
 - Persistent local state via `SharedPreferences`.
 - Config profiles, JSON export to the system clipboard, reset.
 - Close the menu to a minimal floating launch capsule; back closes/reopens.
