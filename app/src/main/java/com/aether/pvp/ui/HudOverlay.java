@@ -283,10 +283,10 @@ public final class HudOverlay {
         float scale = 0.9f + m.configA * 0.16f;
         float width = 188f * u * scale;
         float height = 50f * u * scale;
-        float right = w - safeRight - 22f * u;
-        float top = h * 0.575f;
+        float centerX = w * 0.5f;
+        float top = h - safeBottom - 72f * u - height;
         RectF card = temp;
-        card.set(right - width, top, right, top + height);
+        card.set(centerX - width * 0.5f, top, centerX + width * 0.5f, top + height);
         int accent = accent(m);
         canvas.saveLayerAlpha(null, moduleAlpha(m));
         if (m.mode == 1) {
