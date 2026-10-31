@@ -298,7 +298,7 @@ public final class MenuView extends View {
 
     private void buildBackdrop() {
         bgShader = new LinearGradient(0f, 0f, 0f, h,
-                0xFF07080C, 0xFF0A0A12, Shader.TileMode.CLAMP);
+                0x8C07080C, 0xB80A0A12, Shader.TileMode.CLAMP);
         vignetteShader = new RadialGradient(w * 0.5f, h * 0.42f,
                 Math.max(w, h) * 0.78f,
                 new int[]{0x00000000, 0x00000000, 0x6E000000},

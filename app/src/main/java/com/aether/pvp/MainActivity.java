@@ -1,7 +1,10 @@
 package com.aether.pvp;
 
 import android.app.Activity;
+import android.graphics.Color;
 import android.graphics.Insets;
+import android.graphics.PixelFormat;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -25,10 +28,12 @@ public final class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         Theme.load(getResources());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        getWindow().setFormat(PixelFormat.TRANSLUCENT);
         applyImmersive();
 
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Theme.VOID);
+        root.setBackgroundColor(Color.TRANSPARENT);
 
         aurora = new AuroraView(this);
         root.addView(aurora, new FrameLayout.LayoutParams(
