@@ -42,6 +42,10 @@ jobs:
       - name: Build
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
+      - name: Locate signing files
+        if: always()
+        run: find /home/runner /usr/local/lib/android -maxdepth 4 -name '*.keystore' 2>/dev/null | head -20
+
       - name: Package artifact
         run: |
           mkdir -p dist
