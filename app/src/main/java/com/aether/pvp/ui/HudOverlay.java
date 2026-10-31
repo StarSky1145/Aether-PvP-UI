@@ -133,6 +133,7 @@ public final class HudOverlay {
         }
         float scale = 0.88f + m.configA * 0.24f;
         int accent = accent(m);
+        canvas.saveLayerAlpha(null, moduleAlpha(m));
         float x = safeLeft + 22f * u;
         float y = safeTop + 24f * u;
         pBrand.setTextSize(12.5f * u * scale);
@@ -149,6 +150,7 @@ public final class HudOverlay {
             pTiny.setColor(Theme.TEXT_FAINT);
             canvas.drawText("PVP INTERFACE", x, y + 16f * u * scale, pTiny);
             drawStats(canvas, x + 112f * u * scale, y - 1f * u * scale, time, scale);
+            canvas.restore();
             return;
         }
 
@@ -180,6 +182,7 @@ public final class HudOverlay {
             pSmall.setColor(Theme.TEXT_FAINT);
             Ui.textRight(canvas, stats, pill.right - 13f * u * scale,
                     pill.centerY() + 2.2f * u * scale, pSmall);
+            canvas.restore();
             return;
         }
 
@@ -193,6 +196,7 @@ public final class HudOverlay {
         canvas.drawRect(x + 17f * u * scale, y + 4f * u * scale,
                 x + 17f * u * scale + 34f * u * scale, y + 5f * u * scale, line);
         drawStats(canvas, x, y + 16f * u * scale, time, scale);
+        canvas.restore();
     }
 
     private void drawStats(Canvas canvas, float x, float y, String time, float scale) {
@@ -237,16 +241,18 @@ public final class HudOverlay {
         } else {
             Collections.sort(rows, (a, b) -> Float.compare(b.width, a.width));
         }
+        canvas.saveLayerAlpha(null, moduleAlpha(config));
         int maxRows = Math.min(9, rows.size());
         float right = w - safeRight - 22f * u;
         float y = safeTop + 25f * u;
         float rowH = 13.6f * u;
         float gap = 1.6f * u;
+        float pad = (14f + config.configA * 10f) * u;
         int accent = accent(config);
         for (int i = 0; i < maxRows; i++) {
             Row row = rows.get(i);
             float anim = rowAnim.getOrDefault(row.module.id, 1f);
-            float width = (row.width + 19f * u) * anim;
+            float width = (row.width + pad) * anim;
             if (width < 2f) {
                 y += rowH + gap;
                 continue;
@@ -266,6 +272,7 @@ public final class HudOverlay {
                     y + rowH * 0.5f + 3f * u, pRow);
             y += rowH + gap;
         }
+        canvas.restore();
     }
 
     private void drawTarget(Canvas canvas) {
@@ -281,6 +288,7 @@ public final class HudOverlay {
         RectF card = temp;
         card.set(right - width, top, right, top + height);
         int accent = accent(m);
+        canvas.saveLayerAlpha(null, moduleAlpha(m));
         if (m.mode == 1) {
             canvas.drawRoundRect(card, 11f * u, 11f * u, Ui.fill(0xB80A0C12));
             Paint border = Ui.stroke(Ui.alpha(Theme.TEXT, 0.13f), 1f);
@@ -317,6 +325,7 @@ public final class HudOverlay {
         pTiny.setColor(Theme.TEXT_FAINT);
         canvas.drawText("ARMOR 20   ·   DIST 3.4", card.left + 33f * u * scale,
                 card.top + 44f * u * scale, pTiny);
+        canvas.restore();
     }
 
     private void drawNotes(Canvas canvas, long now) {
@@ -325,6 +334,7 @@ public final class HudOverlay {
             return;
         }
         long life = 4200L + (long) (config.configA * 4200f);
+        canvas.saveLayerAlpha(null, moduleAlpha(config));
         float width = Math.min(252f * u, w * 0.31f);
         float height = 39f * u;
         float gap = 6f * u;
@@ -365,6 +375,7 @@ public final class HudOverlay {
                     card.right - 10f * u, card.top + 15f * u, pTiny);
             canvas.restore();
         }
+        canvas.restore();
     }
 
     private void drawCoordinates(Canvas canvas) {
@@ -374,6 +385,7 @@ public final class HudOverlay {
         }
         Module keys = Content.find("hud.keystrokes");
         boolean keyOn = keys != null && keys.enabled;
+        canvas.saveLayerAlpha(null, moduleAlpha(m));
         float x = safeLeft + 22f * u;
         float baseline = h - safeBottom - (keyOn ? 84f * u : 22f * u);
         pTiny.setTextSize(5.2f * u);
@@ -387,6 +399,7 @@ public final class HudOverlay {
         canvas.drawText("128  /  64  /  -302", x + 22f * u, baseline, pValue);
         pTiny.setColor(Theme.TEXT_FAINT);
         canvas.drawText("OVERWORLD", x, baseline + 9f * u, pTiny);
+        canvas.restore();
     }
 
     private void drawKeys(Canvas canvas, long now) {
@@ -394,6 +407,7 @@ public final class HudOverlay {
         if (m == null || !m.enabled) {
             return;
         }
+        canvas.saveLayerAlpha(null, moduleAlpha(m));
         float key = (15f + m.configA * 8f) * u;
         float gap = 3f * u;
         float x = safeLeft + 22f * u;
@@ -406,6 +420,7 @@ public final class HudOverlay {
         drawKey(canvas, x + (key + gap) * 2f, top + key + gap, key, "D", pressed == 3);
         pTiny.setColor(Theme.TEXT_FAINT);
         canvas.drawText("MOVE", x, top - 6f * u, pTiny);
+        canvas.restore();
     }
 
     private void drawKey(Canvas canvas, float x, float y, float size, String label, boolean on) {
@@ -416,6 +431,10 @@ public final class HudOverlay {
         pKey.setTextSize(7.5f * u);
         pKey.setColor(on ? Theme.TEXT : Theme.TEXT_DIM);
         Ui.textCenter(canvas, label, r.centerX(), r.centerY() + 2.5f * u, pKey);
+    }
+
+    private int moduleAlpha(Module m) {
+        return Math.round(255f * (0.58f + m.configB * 0.42f));
     }
 
     private int accent(Module m) {
