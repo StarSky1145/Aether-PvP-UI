@@ -11,8 +11,11 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.util.Log;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
 import com.aether.pvp.data.Prefs;
 import com.aether.pvp.gl.AuroraView;
@@ -26,6 +29,15 @@ public final class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        try {
+            start();
+        } catch (Throwable error) {
+            CrashLog.write(this, error);
+            showCrash(error);
+        }
+    }
+
+    private void start() {
         Theme.load(getResources());
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -54,7 +66,31 @@ public final class MainActivity extends Activity {
         root.requestApplyInsets();
     }
 
+    private void showCrash(Throwable error) {
+        try {
+            ScrollView scroll = new ScrollView(this);
+            TextView text = new TextView(this);
+            text.setText("AETHER could not start\n\n" + Log.getStackTraceString(error));
+            text.setTextColor(0xFFF4F2F8);
+            text.setTextSize(11f);
+            text.setPadding(36, 36, 36, 36);
+            text.setTextIsSelectable(true);
+            scroll.setBackgroundColor(0xFF07080C);
+            scroll.addView(text);
+            setContentView(scroll);
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void applySafeInsets(WindowInsets insets) {
+        try {
+            applySafeInsetsInner(insets);
+        } catch (Throwable error) {
+            CrashLog.write(this, error);
+        }
+    }
+
+    private void applySafeInsetsInner(WindowInsets insets) {
         int left = 0;
         int top = 0;
         int right = 0;
@@ -77,6 +113,14 @@ public final class MainActivity extends Activity {
     }
 
     private void applyImmersive() {
+        try {
+            applyImmersiveInner();
+        } catch (Throwable error) {
+            CrashLog.write(this, error);
+        }
+    }
+
+    private void applyImmersiveInner() {
         Window window = getWindow();
         window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);

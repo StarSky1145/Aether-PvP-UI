@@ -6,6 +6,7 @@
         android:required="true" />
 
     <application
+        android:name=".AetherApp"
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="false"
         android:hardwareAccelerated="true"

@@ -15,8 +15,7 @@ public final class AuroraView extends GLSurfaceView {
     public AuroraView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setEGLContextClientVersion(2);
-        setEGLConfigChooser(8, 8, 8, 8, 0, 0);
-        setPreserveEGLContextOnPause(true);
+        setZOrderOnTop(false);
         setRenderer(renderer);
         setRenderMode(RENDERMODE_CONTINUOUSLY);
     }

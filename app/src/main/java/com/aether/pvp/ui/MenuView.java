@@ -10,13 +10,16 @@ import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
+import android.graphics.Typeface;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.widget.OverScroller;
 
+import com.aether.pvp.CrashLog;
 import com.aether.pvp.data.Content;
 import com.aether.pvp.data.Prefs;
 import com.aether.pvp.model.Module;
@@ -100,6 +103,7 @@ public final class MenuView extends View {
     private float hoverX;
     private float hoverY;
     private boolean hoverActive;
+    private boolean drawFailed;
     private VelocityTracker velocityTracker;
 
     private Shader bgShader;
@@ -145,6 +149,7 @@ public final class MenuView extends View {
         super(context);
         this.prefs = prefs;
         this.scroller = new OverScroller(context);
+        prefs.load();
         this.touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setFocusable(true);
         setClickable(true);
@@ -169,7 +174,12 @@ public final class MenuView extends View {
         safeRight = right;
         safeBottom = bottom;
         if (w > 0 && h > 0) {
-            computeLayout();
+            try {
+                computeLayout();
+            } catch (Throwable error) {
+                CrashLog.write(getContext(), error);
+                drawFailed = true;
+            }
             invalidate();
         }
     }
@@ -185,7 +195,12 @@ public final class MenuView extends View {
     @Override
     protected void onSizeChanged(int width, int height, int oldw, int oldh) {
         super.onSizeChanged(width, height, oldw, oldh);
-        computeLayout();
+        try {
+            computeLayout();
+        } catch (Throwable error) {
+            CrashLog.write(getContext(), error);
+            drawFailed = true;
+        }
     }
 
     private void computeLayout() {
@@ -411,6 +426,20 @@ public final class MenuView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        if (drawFailed) {
+            drawFailure(canvas);
+            return;
+        }
+        try {
+            drawFrame(canvas);
+        } catch (Throwable error) {
+            CrashLog.write(getContext(), error);
+            drawFailed = true;
+            drawFailure(canvas);
+        }
+    }
+
+    private void drawFrame(Canvas canvas) {
         long now = SystemClock.uptimeMillis();
         advance(now);
         drawBackdrop(canvas);
@@ -423,6 +452,21 @@ public final class MenuView extends View {
         }
         if (open && now < toastUntil + 260L && !toastText.isEmpty()) {
             drawToast(canvas, now);
+        }
+    }
+
+    private void drawFailure(Canvas canvas) {
+        try {
+            canvas.drawColor(0xFF07080C);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(0xFFF4F2F8);
+            p.setTextSize(Math.max(12f, 13f * u));
+            p.setTypeface(Theme.regular == null ? Typeface.DEFAULT : Theme.regular);
+            canvas.drawText("AETHER could not draw this screen.", 28f, 48f, p);
+            p.setTextSize(Math.max(9f, 10f * u));
+            p.setColor(0xFF9693A3);
+            canvas.drawText("The error was saved to Download/AETHER.", 28f, 74f, p);
+        } catch (Throwable ignored) {
         }
     }
 

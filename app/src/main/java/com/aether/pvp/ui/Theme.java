@@ -33,11 +33,20 @@ public final class Theme {
     }
 
     public static void load(Resources resources) {
-        light = resources.getFont(R.font.sora_light);
-        regular = resources.getFont(R.font.sora_regular);
-        medium = resources.getFont(R.font.sora_medium);
-        semibold = resources.getFont(R.font.sora_semibold);
-        mono = resources.getFont(R.font.plex_mono_regular);
-        monoMedium = resources.getFont(R.font.plex_mono_medium);
+        try {
+            light = resources.getFont(R.font.sora_light);
+            regular = resources.getFont(R.font.sora_regular);
+            medium = resources.getFont(R.font.sora_medium);
+            semibold = resources.getFont(R.font.sora_semibold);
+            mono = resources.getFont(R.font.plex_mono_regular);
+            monoMedium = resources.getFont(R.font.plex_mono_medium);
+        } catch (Throwable error) {
+            light = Typeface.create("sans-serif-light", Typeface.NORMAL);
+            regular = Typeface.create("sans-serif", Typeface.NORMAL);
+            medium = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+            semibold = Typeface.create("sans-serif-medium", Typeface.BOLD);
+            mono = Typeface.MONOSPACE;
+            monoMedium = Typeface.create("monospace", Typeface.BOLD);
+        }
     }
 }
