@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="void">#07080C</color>
+    <color name="night">#07080C</color>
     <color name="icon_bg">#080A0F</color>
     <color name="accent_lavender">#C9B8FF</color>
 </resources>
