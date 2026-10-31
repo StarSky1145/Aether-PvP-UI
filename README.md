@@ -17,10 +17,10 @@ no image assets, no external UI library.
 ## Download
 
 [**AETHER-1.0.0-debug.apk**](https://github.com/StarSky1145/Aether-PvP-UI/releases/download/v1.0.0/AETHER-1.0.0-debug.apk)
-— 264 KB, debug-signed, minSdk 26 / targetSdk 35.
+— 278 KB, debug-signed, minSdk 26 / targetSdk 35.
 
 ```
-SHA-256  62508d780f796d290958a18885ef21ff9e60531d7d61034fcf29299ff30bb8e2
+SHA-256  e2f51128c5bb0c9e76a2cd141c9c6f74eb4fcc8cdb3505e13fe72f104ad60d00
 ```
 
 > The release is debug-signed for direct sideloading. Android may ask you to
@@ -47,9 +47,16 @@ The renderer is deliberately split:
 
 ## Features
 
-- Five sections: Combat, Movement, Visuals, Player, Config.
-- 30 mock modules with toggles, sliders, key hints, and quick filters
+- Six sections: Combat, Movement, Visuals, HUD, Player, Config.
+- 36 mock modules with toggles, sliders, key hints and filters
   (`ALL / ON / OFF`).
+- **HUD layer** — glass watermark with FPS, ping and clock; animated ArrayList;
+  notification stack; Target HUD; keystrokes; coordinates. Every component has
+  its own toggle and appearance settings. Choose `PREVIEW HUD` in the HUD tab
+  to close the menu and inspect the layer.
+- **Module configuration sheet** — tap a card outside its toggle to edit
+  keybind, mode, value/scale, opacity and accent, or reset the module. Changes
+  save immediately.
 - Persistent local state via `SharedPreferences`.
 - Config profiles, JSON export to the system clipboard, reset.
 - Close the menu to a minimal floating launch capsule; back closes/reopens.
@@ -81,7 +88,9 @@ APK output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 | Gesture | Action |
 | --- | --- |
-| Tap a tab / card | Navigate / toggle module |
+| Tap a tab | Navigate |
+| Tap a card body | Open the module configuration sheet |
+| Tap a card toggle | Enable / disable the module |
 | Drag vertically in the module area | Inertial scroll |
 | Drag a slider | Adjust value (saved on release) |
 | Tap the close glyph | Collapse to the AETHER capsule |
@@ -102,7 +111,8 @@ app/src/main/java/com/aether/pvp/
 │   ├── Content.java           mock catalogue
 │   └── Prefs.java             local persistence
 └── ui/
-    ├── MenuView.java          all Skia drawing + touch
+    ├── MenuView.java          Skia chrome, config sheet and touch
+    ├── HudOverlay.java        in-game HUD layer
     ├── Theme.java             palette and type scale
     ├── Icons.java             hand-drawn vector glyphs
     └── Ui.java                drawing helpers
