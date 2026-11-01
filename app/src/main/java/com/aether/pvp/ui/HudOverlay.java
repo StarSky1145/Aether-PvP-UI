@@ -9,6 +9,7 @@ import android.os.SystemClock;
 
 import com.aether.pvp.data.Content;
 import com.aether.pvp.model.Module;
+import com.aether.pvp.render.AetherSurface;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -34,6 +35,11 @@ public final class HudOverlay {
     private final Paint pNoteTitle = Ui.text(8.2f, Theme.TEXT, Theme.medium, 0.01f);
     private final Paint pNoteBody = Ui.text(6.2f, Theme.TEXT_DIM, Theme.regular, 0.005f);
     private final Paint pKey = Ui.text(7.5f, Theme.TEXT_SOFT, Theme.monoMedium, 0.06f);
+    private final Paint pIsland = Ui.text(9f, Theme.TEXT, Theme.medium, 0.02f);
+    private final Paint pPotion = Ui.text(7f, Theme.TEXT_SOFT, Theme.medium, 0.01f);
+    private final Paint pPotionTime = Ui.text(5.4f, Theme.TEXT_FAINT, Theme.mono, 0.04f);
+    private final Paint pList = Ui.text(7f, Theme.TEXT_SOFT, Theme.medium, 0.01f);
+    private final Paint pListPing = Ui.text(5.2f, Theme.TEXT_FAINT, Theme.mono, 0.04f);
 
     private final RectF temp = new RectF();
     private final List<Module> active = new ArrayList<>();
@@ -105,6 +111,9 @@ public final class HudOverlay {
         }
         drawCrosshair(canvas);
         drawWatermark(canvas, now);
+        drawIsland(canvas, now);
+        drawPotions(canvas);
+        drawPlayerList(canvas);
         drawArrayList(canvas);
         drawTarget(canvas);
         drawNotes(canvas, now);
@@ -210,6 +219,170 @@ public final class HudOverlay {
         canvas.drawCircle(cx, cy, radius * 1.45f, glow);
         canvas.drawPath(Ui.sparkle(cx, cy, radius),
                 Ui.fill(Ui.alpha(accent, 0.95f)));
+    }
+
+
+    /**
+     * Top-centre capsule inspired by OpenNilore's DynamicIsland: one surface
+     * that changes what it says instead of adding another badge to the screen.
+     */
+    private void drawIsland(Canvas canvas, long now) {
+        Module m = Content.find("hud.island");
+        if (m == null || !m.enabled) {
+            return;
+        }
+        int accent = accent(m);
+        int alpha = moduleAlpha(m);
+        boolean expanded = m.mode == 2;
+        float pillW = (expanded ? 268f : 214f) * u;
+        float pillH = (expanded ? 34f : 27f) * u;
+        float cx = w * 0.5f;
+        float top = safeTop + 9f * u;
+        RectF pill = new RectF(cx - pillW * 0.5f, top, cx + pillW * 0.5f, top + pillH);
+
+        canvas.saveLayerAlpha(null, alpha);
+        AetherSurface.hud(canvas, pill, pillH * 0.5f, u, accent, alpha / 255f);
+
+        int phase = (int) ((now / 3600L) % 3L);
+        String title;
+        String value;
+        if (m.mode == 1) {
+            title = "AETHER";
+            value = "LIVE";
+        } else if (expanded) {
+            title = "AETHER  /  SESSION";
+            value = "238 FPS   ·   12 MS   ·   " + clock.format(new Date(now));
+        } else if (phase == 1) {
+            title = "SCAFFOLD";
+            value = "64 / 64";
+        } else if (phase == 2) {
+            title = "EVENT";
+            value = "SKY 04:12";
+        } else {
+            title = "AETHER";
+            value = "238 FPS   ·   12 MS";
+        }
+
+        drawLogo(canvas, pill.left + 14f * u, pill.centerY(), 6.4f * u, accent);
+        pIsland.setTextSize((expanded ? 8.8f : 8.1f) * u);
+        pIsland.setColor(Theme.TEXT);
+        canvas.drawText(title, pill.left + 25f * u,
+                pill.centerY() + 2.7f * u, pIsland);
+
+        pSmall.setTextSize(5.5f * u);
+        pSmall.setColor(expanded ? Theme.MINT : Theme.TEXT_DIM);
+        Ui.textRight(canvas, value, pill.right - 13f * u,
+                pill.centerY() + 2.2f * u, pSmall);
+
+        // A tiny breathing status dot anchors the capsule without a glow.
+        float pulse = 0.72f + 0.28f * (float) Math.sin(now / 380.0);
+        canvas.drawCircle(pill.left + 10.5f * u, pill.centerY(),
+                1.7f * u, Ui.fill(Ui.alpha(Theme.MINT, pulse)));
+        if (expanded) {
+            Paint hair = Ui.stroke(0x18FFFFFF, 1f);
+            canvas.drawLine(pill.left + 12f * u, pill.bottom - 6f * u,
+                    pill.right - 12f * u, pill.bottom - 6f * u, hair);
+        }
+        canvas.restore();
+    }
+
+    private void drawPotions(Canvas canvas) {
+        Module m = Content.find("hud.potions");
+        if (m == null || !m.enabled) {
+            return;
+        }
+        int accent = accent(m);
+        int alpha = moduleAlpha(m);
+        float x = safeLeft + 22f * u;
+        float top = safeTop + 61f * u;
+        String[] names = {"Speed II", "Strength I", "Regeneration", "Resistance"};
+        String[] times = {"2:14", "1:02", "0:38", "1:51"};
+
+        canvas.saveLayerAlpha(null, alpha);
+        if (m.mode == 2) {
+            pPotion.setTextSize(6.4f * u);
+            pPotion.setColor(Theme.TEXT_DIM);
+            canvas.drawText("SPD II   ·   STR I   ·   REG I", x, top + 8f * u, pPotion);
+            canvas.restore();
+            return;
+        }
+        float width = 138f * u;
+        float header = 22f * u;
+        float rowH = 16f * u;
+        int shown = m.mode == 1 ? 2 : 4;
+        float height = header + shown * rowH + 7f * u;
+        RectF card = new RectF(x, top, x + width, top + height);
+        AetherSurface.hud(canvas, card, 9f * u, u, accent, alpha / 255f);
+
+        pTiny.setTextSize(4.9f * u);
+        pTiny.setColor(Theme.TEXT_FAINT);
+        canvas.drawText("EFFECTS", x + 11f * u, top + 13f * u, pTiny);
+        pTiny.setColor(Theme.MINT);
+        Ui.textRight(canvas, shown + " ACTIVE", x + width - 11f * u, top + 13f * u, pTiny);
+
+        for (int i = 0; i < shown; i++) {
+            float rowY = top + header + i * rowH;
+            int color = i == 0 ? Theme.MINT : i == 1 ? Theme.ROSE : Theme.LAVENDER;
+            canvas.drawCircle(x + 12f * u, rowY + rowH * 0.45f, 1.7f * u,
+                    Ui.fill(Ui.alpha(color, 0.9f)));
+            pPotion.setTextSize(6.7f * u);
+            pPotion.setColor(Theme.TEXT_SOFT);
+            canvas.drawText(names[i], x + 19f * u, rowY + 10f * u, pPotion);
+            pPotionTime.setTextSize(5.2f * u);
+            pPotionTime.setColor(Theme.TEXT_FAINT);
+            Ui.textRight(canvas, times[i], x + width - 11f * u, rowY + 10f * u, pPotionTime);
+        }
+        canvas.restore();
+    }
+
+    private void drawPlayerList(Canvas canvas) {
+        Module m = Content.find("hud.playerlist");
+        if (m == null || !m.enabled) {
+            return;
+        }
+        Module potions = Content.find("hud.potions");
+        boolean potionsOn = potions != null && potions.enabled;
+        float top = safeTop + 61f * u;
+        if (potionsOn) {
+            int shown = potions.mode == 1 ? 2 : 4;
+            float potionH = potions.mode == 2 ? 10f * u : 22f * u + shown * 16f * u + 7f * u;
+            top += potionH + 8f * u;
+        }
+        int accent = accent(m);
+        int alpha = moduleAlpha(m);
+        float x = safeLeft + 22f * u;
+        float width = 146f * u;
+        float header = 21f * u;
+        float rowH = 15f * u;
+        int shown = m.mode == 1 ? 3 : 5;
+        float height = header + shown * rowH + 6f * u;
+        top = Math.min(top, h - safeBottom - height - 92f * u);
+        RectF card = new RectF(x, top, x + width, top + height);
+
+        canvas.saveLayerAlpha(null, alpha);
+        AetherSurface.hud(canvas, card, 9f * u, u, accent, alpha / 255f);
+        pTiny.setTextSize(4.9f * u);
+        pTiny.setColor(Theme.TEXT_FAINT);
+        canvas.drawText("PLAYERS", x + 11f * u, top + 13f * u, pTiny);
+        pTiny.setColor(Theme.TEXT_DIM);
+        Ui.textRight(canvas, "05", x + width - 11f * u, top + 13f * u, pTiny);
+
+        String[] names = {"Sora_", "Vale", "Mira", "Kite", "Nyx"};
+        String[] pings = {"12", "24", "31", "48", "67"};
+        int[] colors = {Theme.MINT, Theme.LAVENDER, Theme.ROSE, Theme.TEXT_SOFT, Theme.TEXT_DIM};
+        for (int i = 0; i < shown; i++) {
+            float rowY = top + header + i * rowH;
+            canvas.drawCircle(x + 12f * u, rowY + rowH * 0.42f, 1.6f * u,
+                    Ui.fill(Ui.alpha(colors[i], 0.9f)));
+            pList.setTextSize(6.6f * u);
+            pList.setColor(i == 0 ? Theme.TEXT : Theme.TEXT_SOFT);
+            canvas.drawText(names[i], x + 19f * u, rowY + 9.5f * u, pList);
+            pListPing.setTextSize(5f * u);
+            pListPing.setColor(Theme.TEXT_FAINT);
+            Ui.textRight(canvas, pings[i] + " MS", x + width - 11f * u,
+                    rowY + 9.5f * u, pListPing);
+        }
+        canvas.restore();
     }
 
     private void drawArrayList(Canvas canvas) {

@@ -13,6 +13,8 @@ public final class Prefs {
     private static final String FILE = "aether_interface";
     private static final String ACTIVE_TAB = "active_tab";
     private static final String MENU_OPEN = "menu_open";
+    private static final String LAUNCHER_X = "launcher_x";
+    private static final String LAUNCHER_Y = "launcher_y";
     private final SharedPreferences sp;
 
     public Prefs(Context context) {
@@ -69,6 +71,19 @@ public final class Prefs {
         sp.edit().putBoolean(MENU_OPEN, open).apply();
     }
 
+    /** Persisted orb position; -1 means "place at the default right edge". */
+    public int launcherX() {
+        return sp.getInt(LAUNCHER_X, -1);
+    }
+
+    public int launcherY() {
+        return sp.getInt(LAUNCHER_Y, -1);
+    }
+
+    public void setLauncherPosition(int x, int y) {
+        sp.edit().putInt(LAUNCHER_X, x).putInt(LAUNCHER_Y, y).apply();
+    }
+
     public void reset() {
         sp.edit().clear().apply();
         for (Module m : Content.all()) {
@@ -87,6 +102,9 @@ public final class Prefs {
                     || m.id.equals("hud.notifications")
                     || m.id.equals("hud.targethud")
                     || m.id.equals("hud.coordinates")
+                    || m.id.equals("hud.island")
+                    || m.id.equals("hud.potions")
+                    || m.id.equals("hud.playerlist")
                     || m.id.equals("player.friends")
                     || m.id.equals("player.teams")
                     || m.id.equals("config.autosave");

@@ -13,6 +13,7 @@ import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
 import android.view.View;
@@ -24,6 +25,7 @@ import com.aether.pvp.data.Content;
 import com.aether.pvp.data.Prefs;
 import com.aether.pvp.model.Module;
 import com.aether.pvp.model.Tab;
+import com.aether.pvp.render.AetherSurface;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +40,13 @@ public final class MenuView extends View {
     private static final long TOAST_MS = 1700L;
     private static final long SCROLLBAR_MS = 1100L;
 
+    public interface ModuleEventListener {
+        void onModuleEvent(String title, String detail, int accent);
+    }
+
     private final Prefs prefs;
     private final HudOverlay hud = new HudOverlay();
+    private final boolean overlay;
     private final OverScroller scroller;
     private final int touchSlop;
 
@@ -103,6 +110,12 @@ public final class MenuView extends View {
     private boolean pressedClose;
     private boolean pressedSave;
     private boolean pressedLaunch;
+    private boolean pressedCapsule;
+    private boolean overlayActive;
+    private boolean closePending;
+    private Runnable closeListener;
+    private Runnable overlayAction;
+    private ModuleEventListener moduleEventListener;
     private int pressedTab = -1;
     private int pressedChip = -1;
     private Module pressedModule;
@@ -167,23 +180,68 @@ public final class MenuView extends View {
     private Paint pAction;
 
     public MenuView(Context context, Prefs prefs) {
+        this(context, prefs, false);
+    }
+
+    /**
+     * @param overlay true when hosted in a WindowManager overlay rather than the
+     *                Activity; the game-like backdrop and the in-panel HUD are
+     *                then suppressed so the live app behind stays visible.
+     */
+    public MenuView(Context context, Prefs prefs, boolean overlay) {
         super(context);
         this.prefs = prefs;
+        this.overlay = overlay;
         this.scroller = new OverScroller(context);
         prefs.load();
         this.touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         setFocusable(true);
+        setFocusableInTouchMode(true);
         setClickable(true);
         setWillNotDraw(false);
         setContentDescription("AETHER, a Minecraft PvP interface concept");
         tabIndex = prefs.savedTab(TABS);
         tab = TABS[tabIndex];
         activeProfile = 0;
-        open = prefs.menuOpen();
+        open = !overlay && prefs.menuOpen();
         panelAnim = 0f;
         pageAnim = open ? 0f : 1f;
         lastFrameAt = SystemClock.uptimeMillis();
         buildCards();
+        setOnKeyListener((view, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                return handleBack();
+            }
+            return false;
+        });
+    }
+
+    public void setOnCloseListener(Runnable listener) {
+        closeListener = listener;
+    }
+
+    public void setOnOverlayAction(Runnable action) {
+        overlayAction = action;
+    }
+
+    public void setOverlayActive(boolean active) {
+        overlayActive = active;
+        invalidate();
+    }
+
+    public void setOnModuleEventListener(ModuleEventListener listener) {
+        moduleEventListener = listener;
+    }
+
+    public void openMenu() {
+        closePending = false;
+        if (!open) {
+            setOpen(true);
+        } else {
+            pageAnim = Math.max(pageAnim, 0.72f);
+            postInvalidateOnAnimation();
+        }
+        requestFocus();
     }
 
     public void setSafeInsets(int left, int top, int right, int bottom) {
@@ -211,10 +269,10 @@ public final class MenuView extends View {
             return true;
         }
         if (open) {
-            setOpen(false);
+            requestClose();
             return true;
         }
-        return false;
+        return overlay;
     }
 
     @Override
@@ -468,9 +526,13 @@ public final class MenuView extends View {
     private void drawFrame(Canvas canvas) {
         long now = SystemClock.uptimeMillis();
         advance(now);
-        drawBackdrop(canvas);
-        float hudAlpha = open ? 0f : (1f - Ui.easeOutCubic(panelAnim));
-        hud.draw(canvas, hudAlpha, now);
+        if (overlay) {
+            drawOverlayScrim(canvas);
+        } else {
+            drawBackdrop(canvas);
+            float hudAlpha = open ? 0f : (1f - Ui.easeOutCubic(panelAnim));
+            hud.draw(canvas, hudAlpha, now);
+        }
 
         if (panelAnim > 0.002f) {
             drawPanel(canvas);
@@ -478,7 +540,7 @@ public final class MenuView extends View {
         if (configModule != null && configAnim > 0.01f) {
             drawConfig(canvas);
         }
-        if (panelAnim < 0.998f) {
+        if (!overlay && panelAnim < 0.998f) {
             drawLaunch(canvas, 1f - Ui.easeOutCubic(panelAnim));
         }
         if (open && now < toastUntil + 260L && !toastText.isEmpty()) {
@@ -552,6 +614,23 @@ public final class MenuView extends View {
         }
     }
 
+    /** Dims the app underneath without hiding it; there is no fake game scene in overlay mode. */
+    private void drawOverlayScrim(Canvas canvas) {
+        float e = Ui.easeOutCubic(panelAnim);
+        if (e <= 0.002f) {
+            return;
+        }
+        shape.setStyle(Paint.Style.FILL);
+        shape.setShader(null);
+        shape.setColor(Ui.alpha(0xFF04050A, 0.50f * e));
+        canvas.drawRect(0f, 0f, w, h, shape);
+        shape.setShader(new RadialGradient(w * 0.5f, h * 0.44f, Math.max(w, h) * 0.62f,
+                new int[]{Ui.alpha(Theme.LAVENDER, 0.055f * e), 0x00C9B8FF},
+                null, Shader.TileMode.CLAMP));
+        canvas.drawRect(0f, 0f, w, h, shape);
+        shape.setShader(null);
+    }
+
     private void drawBackdrop(Canvas canvas) {
         shape.setShader(bgShader);
         canvas.drawRect(0f, 0f, w, h, shape);
@@ -584,10 +663,9 @@ public final class MenuView extends View {
             canvas.saveLayerAlpha(null, alpha);
         }
 
-        drawPanelShadow(canvas);
-        shape.setShader(panelFillShader);
-        canvas.drawRoundRect(panel, 18f * u, 18f * u, shape);
-        shape.setShader(null);
+        // Android adaptation of OpenNilore's layered SDF panel: shadow, smoked
+        // glass, clipped grain, specular edge and gradient rim.
+        AetherSurface.panel(canvas, panel, 18f * u, u, Theme.LAVENDER);
 
         canvas.save();
         Path clip = new Path();
@@ -762,11 +840,13 @@ public final class MenuView extends View {
         canvas.drawRoundRect(capsuleRect, 11f * u, 11f * u, shape);
         Paint cStroke = Ui.stroke(0x14FFFFFF, 1f);
         canvas.drawRoundRect(capsuleRect, 11f * u, 11f * u, cStroke);
-        Ui.dot(canvas, capsuleRect.left + 11f * u, capsuleRect.centerY(), 2.1f * u, Theme.MINT);
+        Ui.dot(canvas, capsuleRect.left + 11f * u, capsuleRect.centerY(), 2.1f * u,
+                overlayActive ? Theme.LAVENDER : Theme.MINT);
         textPaint.set(pStatus);
-        textPaint.setColor(Theme.TEXT_DIM);
-        canvas.drawText("OPENGL · SKIA", capsuleRect.left + 18f * u,
-                capsuleRect.centerY() + 1.9f * u, textPaint);
+        textPaint.setColor(overlayActive ? Theme.LAVENDER : Theme.TEXT_DIM);
+        canvas.drawText(overlayActive ? "OVERLAY · ON"
+                        : overlayAction != null ? "FLOAT · OFF" : "OPENGL · SKIA",
+                capsuleRect.left + 18f * u, capsuleRect.centerY() + 1.9f * u, textPaint);
 
         boolean closeHover = hoverActive && closeRect.contains(hoverX, hoverY);
         if (pressedClose || closeHover) {
@@ -1699,10 +1779,35 @@ public final class MenuView extends View {
         prefs.setMenuOpen(value);
         if (open) {
             pageAnim = 0f;
+            closePending = false;
+            lastFrameAt = SystemClock.uptimeMillis();
         } else {
-            hud.push("ClickGUI hidden", "HUD overlay active · local session", Theme.LAVENDER);
+            publish("ClickGUI hidden", "HUD overlay active · local session", Theme.LAVENDER);
         }
         postInvalidateOnAnimation();
+    }
+
+    private void requestClose() {
+        if (!open) {
+            return;
+        }
+        setOpen(false);
+        if (overlay && closeListener != null && !closePending) {
+            closePending = true;
+            postDelayed(() -> {
+                closePending = false;
+                if (closeListener != null) {
+                    closeListener.run();
+                }
+            }, 190L);
+        }
+    }
+
+    private void publish(String title, String detail, int accent) {
+        hud.push(title, detail, accent);
+        if (moduleEventListener != null) {
+            moduleEventListener.onModuleEvent(title, detail, accent);
+        }
     }
 
     private int profileIndex(String id) {
@@ -1736,7 +1841,7 @@ public final class MenuView extends View {
         }
         m.enabled = !m.enabled;
         prefs.save(m);
-        hud.push(m.name + (m.enabled ? " enabled" : " disabled"),
+        publish(m.name + (m.enabled ? " enabled" : " disabled"),
                 "Local preview · " + (m.enabled ? "active" : "inactive"),
                 m.enabled ? Theme.MINT : Theme.TEXT_FAINT);
         showToast(m.name + (m.enabled ? " enabled" : " disabled"));
@@ -1784,6 +1889,7 @@ public final class MenuView extends View {
         pressedClose = false;
         pressedSave = false;
         pressedLaunch = false;
+        pressedCapsule = false;
         pressedTab = -1;
         pressedChip = -1;
         pressedModule = null;
@@ -1818,6 +1924,8 @@ public final class MenuView extends View {
                 scroller.forceFinished(true);
                 if (closeRect.contains(x, y)) {
                     pressedClose = true;
+                } else if (capsuleRect.contains(x, y)) {
+                    pressedCapsule = true;
                 } else if (saveRect.contains(x, y)) {
                     pressedSave = true;
                 } else {
@@ -1915,10 +2023,14 @@ public final class MenuView extends View {
                 } else {
                     performClick();
                     if (pressedClose && closeRect.contains(x, y)) {
-                        setOpen(false);
+                        requestClose();
+                    } else if (pressedCapsule && capsuleRect.contains(x, y)) {
+                        if (overlayAction != null) {
+                            overlayAction.run();
+                        }
                     } else if (pressedSave && saveRect.contains(x, y)) {
                         if (tab == Tab.HUD) {
-                            setOpen(false);
+                            requestClose();
                         } else {
                             saveProfile();
                         }

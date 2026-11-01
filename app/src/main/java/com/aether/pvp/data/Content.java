@@ -75,6 +75,18 @@ public final class Content {
                 "Movement, at the edge of vision.", "WASD", false));
         HUD.add(Module.toggle("hud.coordinates", "Coordinates",
                 "A precise positional readout.", "XYZ", true));
+        Module island = Module.toggle("hud.island", "Dynamic Island",
+                "One living capsule for the numbers that matter.", "TOP CENTER", true);
+        island.mode = 0;
+        HUD.add(island);
+        Module potions = Module.toggle("hud.potions", "Potion Effects",
+                "Active effects, condensed into a quiet column.", "EFFECTS", true);
+        potions.mode = 0;
+        HUD.add(potions);
+        Module playerlist = Module.toggle("hud.playerlist", "Player List",
+                "Nearby players, named without noise.", "ONLINE", true);
+        playerlist.mode = 0;
+        HUD.add(playerlist);
 
         PLAYER.add(Module.toggle("player.friends", "Friends",
                 "Trusted identities, kept in sync.", "SYNC", true));
@@ -125,7 +137,7 @@ public final class Content {
     }
 
     public static List<Module> all() {
-        List<Module> out = new ArrayList<>(36);
+        List<Module> out = new ArrayList<>(40);
         out.addAll(COMBAT);
         out.addAll(MOVEMENT);
         out.addAll(VISUALS);

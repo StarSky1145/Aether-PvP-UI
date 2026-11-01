@@ -1,12 +1,16 @@
 package com.aether.pvp;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
@@ -16,15 +20,21 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.aether.pvp.data.Prefs;
+import com.aether.pvp.overlay.OverlayService;
 import com.aether.pvp.gl.AuroraView;
 import com.aether.pvp.ui.MenuView;
 import com.aether.pvp.ui.Theme;
 
 public final class MainActivity extends Activity {
+    private static final int REQUEST_OVERLAY = 41;
+    private static final int REQUEST_NOTIFICATIONS = 42;
+
     private AuroraView aurora;
     private MenuView menu;
+    private boolean overlayPending;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +74,74 @@ public final class MainActivity extends Activity {
 
         setContentView(root);
         root.requestApplyInsets();
+
+        menu.setOnOverlayAction(this::toggleOverlay);
+        menu.setOverlayActive(OverlayService.isRunning());
+        requestNotificationPermission();
+    }
+
+    private void toggleOverlay() {
+        if (OverlayService.isRunning()) {
+            OverlayService.stop(this);
+            if (menu != null) {
+                menu.setOverlayActive(false);
+            }
+            toast("Floating UI stopped");
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+            overlayPending = true;
+            toast("Allow \"Display over other apps\" for AETHER");
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, REQUEST_OVERLAY);
+            } catch (Throwable error) {
+                overlayPending = false;
+                CrashLog.write(this, error);
+                toast("Overlay settings are unavailable");
+            }
+            return;
+        }
+        startOverlay();
+    }
+
+    private void startOverlay() {
+        try {
+            OverlayService.start(this);
+            if (menu != null) {
+                menu.setOverlayActive(true);
+            }
+            toast("Floating ClickGUI enabled · drag the AETHER orb");
+        } catch (Throwable error) {
+            CrashLog.write(this, error);
+            if (menu != null) {
+                menu.setOverlayActive(false);
+            }
+            toast("Could not start floating UI");
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) {
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        try {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    REQUEST_NOTIFICATIONS);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private void toast(String message) {
+        try {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignored) {
+        }
     }
 
     private void showCrash(Throwable error) {
@@ -169,6 +247,14 @@ public final class MainActivity extends Activity {
         super.onResume();
         if (aurora != null) {
             aurora.onResume();
+        }
+        if (menu != null) {
+            menu.setOverlayActive(OverlayService.isRunning());
+        }
+        if (overlayPending && Build.VERSION.SDK_INT >= 23
+                && Settings.canDrawOverlays(this)) {
+            overlayPending = false;
+            startOverlay();
         }
     }
 
