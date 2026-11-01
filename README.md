@@ -16,11 +16,11 @@ no image assets, no external UI library.
 
 ## Download
 
-[**AETHER-1.0.0-debug.apk**](https://github.com/StarSky1145/Aether-PvP-UI/releases/download/v1.0.0/AETHER-1.0.0-debug.apk)
-— 278 KB, debug-signed, minSdk 26 / targetSdk 35.
+[**AETHER-1.1.0-debug.apk**](https://github.com/StarSky1145/Aether-PvP-UI/releases/download/v1.1.0/AETHER-1.1.0-debug.apk)
+— 319 KB, debug-signed, minSdk 26 / targetSdk 35.
 
 ```
-SHA-256  90f20a6f9f9e26afe30af34e04e3045c0679cc5e3cccaa161ef1cace062bccf8
+SHA-256  164b06dd67e3f5994e6127d14c3839e0537f40a36cae1bc2b70daab83249935c
 ```
 
 > The release is debug-signed for direct sideloading. Android may ask you to
@@ -49,19 +49,31 @@ The renderer is deliberately split:
 
 ## Features
 
-- Six sections: Combat, Movement, Visuals, HUD, Player, Config.
-- 36 mock modules with toggles, sliders, key hints and filters
-  (`ALL / ON / OFF`).
+- Nine sections: Combat, Movement, Player, Render, World, Misc, Ghost, HUD,
+  Config. The first seven follow Nilore's category model, including its
+  alphabetical module order.
+- **Nilore module catalogue** — 76 modules and 343 internal settings reproduced
+  from the public OpenNilore source as local interface state. Boolean, number,
+  mode and multi-select controls use Nilore's labels, defaults, ranges and
+  options; `FakeAntiAim`'s constant-backed modes are normalised to readable
+  names.
 - **HUD layer** — glass watermark with FPS, ping and clock; animated ArrayList;
-  notification stack; Target HUD; keystrokes; coordinates. Every component has
-  its own toggle and appearance settings. Choose `PREVIEW HUD` in the HUD tab
-  to close the menu and inspect the layer.
-- **Module configuration sheet** — tap a card outside its toggle to edit
-  keybind, mode, value/scale, opacity and accent, or reset the module. Changes
-  save immediately.
+  notification stack; Target HUD; keystrokes; coordinates; Dynamic Island;
+  potion effects; player list. Every component has its own toggle and
+  appearance settings. Choose `PREVIEW HUD` in the HUD tab to close the menu and
+  inspect the layer.
+- **Module configuration sheet** — tap a card outside its toggle to edit its
+  internal settings, keybind, mode, opacity or accent, or reset the module.
+  The sheet scrolls for long Nilore modules such as KillAura (28 settings).
+  Modules with no settings show an explicit empty state. Changes save
+  immediately.
 - Persistent local state via `SharedPreferences`.
 - Config profiles, JSON export to the system clipboard, reset.
 - Close the menu to a minimal floating launch capsule; back closes/reopens.
+- **Floating overlay** — a foreground service hosts the HUD touch-through and
+  the ClickGUI in a focusable `TYPE_APPLICATION_OVERLAY` window, with a
+  draggable glass orb and persisted position. Requires the system
+  "display over other apps" permission.
 - Immersive fullscreen, display-cutout safe insets, 60 fps custom rendering.
 
 ## Build
@@ -108,10 +120,15 @@ app/src/main/java/com/aether/pvp/
 │   └── AuroraRenderer.java    GLSL aurora backdrop
 ├── model/
 │   ├── Module.java            UI-only module model
+│   ├── ConfigSetting.java     boolean / number / mode / multi-select
 │   └── Tab.java               navigation destinations
 ├── data/
 │   ├── Content.java           mock catalogue
 │   └── Prefs.java             local persistence
+├── overlay/
+│   ├── OverlayService.java    foreground overlay host
+│   ├── OverlayHudView.java    touch-through HUD window
+│   └── LauncherView.java      draggable glass orb
 └── ui/
     ├── MenuView.java          Skia chrome, config sheet and touch
     ├── HudOverlay.java        in-game HUD layer
@@ -124,3 +141,12 @@ app/src/main/java/com/aether/pvp/
 
 Sora and IBM Plex Mono are distributed under the SIL Open Font License 1.1.
 See [`NOTICE.md`](NOTICE.md). The application code is MIT licensed.
+
+## Nilore attribution
+
+The module taxonomy and setting definitions are referenced from
+[`Pickbowen/OpenNilore`](https://github.com/Pickbowen/OpenNilore), a public
+Minecraft client project, so this interface can mirror its structure. AETHER is
+a standalone Android UI concept: it does not include, link, inject, or interact
+with that client or Minecraft. No OpenNilore code is copied into this
+repository; only interface metadata is reproduced.

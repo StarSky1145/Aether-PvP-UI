@@ -26,3 +26,12 @@ Source: https://github.com/google/fonts/tree/main/ofl/ibmplexmono
 
 Application code (c) 2026 AETHER contributors, MIT licensed.
 See [`LICENSE`](LICENSE).
+
+## Interface reference
+
+Module names, category taxonomy and setting definitions were referenced from
+[`Pickbowen/OpenNilore`](https://github.com/Pickbowen/OpenNilore) for the
+Nilore-parity catalogue. OpenNilore is a separate Minecraft client project and
+is not bundled, linked, or executed by AETHER. No source code from that project
+is included here; only UI metadata (names, ranges, modes and defaults) is
+reproduced as local mock state.
