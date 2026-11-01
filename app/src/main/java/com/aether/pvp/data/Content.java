@@ -125,7 +125,7 @@ public final class Content {
         // MOVEMENT — MOVEMENT
         m = nilore("nilore.movement.collisionspeed", "CollisionSpeed", "MOVEMENT", "Movement module · Nilore settings, local preview.", false);
         m.addSetting(ConfigSetting.number("Boost", 0.03f, 0.005f, 0.16f, 0.005f));
-        m.addSetting(ConfigSetting.number("Speed Limit", 0.2f, 1.0f, 0.01f, 1.0f));
+        m.addSetting(ConfigSetting.number("Speed Limit", 0.4f, 0.2f, 1.0f, 0.01f));
         m.addSetting(ConfigSetting.number("Distance", 0.6f, 0.3f, 6.0f, 0.1f));
         MOVEMENT.add(m);
         m = nilore("nilore.movement.fastweb", "FastWeb", "MOVEMENT", "Movement module · Nilore settings, local preview.", false);
@@ -178,7 +178,7 @@ public final class Content {
         m = nilore("nilore.movement.targetstrafe", "TargetStrafe", "MOVEMENT", "Movement module · Nilore settings, local preview.", false);
         m.addSetting(ConfigSetting.mode("Mode", "Round", "Round", "Strict"));
         m.addSetting(ConfigSetting.bool("Void Check", true));
-        m.addSetting(ConfigSetting.number("Distance", 0.5f, 3.0f, 0.05f, 1.0f));
+        m.addSetting(ConfigSetting.number("Distance", 0.75f, 0.5f, 3.0f, 0.05f));
         MOVEMENT.add(m);
 
         // PLAYER — PLAYER
@@ -190,8 +190,8 @@ public final class Content {
         m = nilore("nilore.player.antiweb", "AntiWeb", "PLAYER", "Player module · Nilore settings, local preview.", false);
         PLAYER.add(m);
         m = nilore("nilore.player.automlg", "AutoMLG", "PLAYER", "Player module · Nilore settings, local preview.", false);
-        m.addSetting(ConfigSetting.number("Fall distance", 3.0f, 0.0f, 1.0f, 1.0f));
-        m.addSetting(ConfigSetting.number("Predict Ticks", 2.0f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Fall distance", 3.0f, 1.0f, 10.0f, 0.1f));
+        m.addSetting(ConfigSetting.number("Predict Ticks", 2.0f, 1.0f, 5.0f, 1.0f));
         m.addSetting(ConfigSetting.bool("Solid check", true));
         m.addSetting(ConfigSetting.bool("Recorvey", true));
         PLAYER.add(m);
@@ -269,7 +269,7 @@ public final class Content {
 
         // RENDER — RENDER
         m = nilore("nilore.render.aspectratio", "AspectRatio", "RENDER", "Render module · Nilore settings, local preview.", false);
-        m.addSetting(ConfigSetting.number("Ratio", 1.7f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Ratio", 1.7f, 0.1f, 5.0f, 0.1f));
         RENDER.add(m);
         m = nilore("nilore.render.audiovisualizer", "AudioVisualizer", "RENDER", "Render module · Nilore settings, local preview.", false);
         m.addSetting(ConfigSetting.mode("Mode", "Bars", "Bars", "Only Left", "Only Right"));
@@ -284,15 +284,15 @@ public final class Content {
         m = nilore("nilore.render.betterchat", "BetterChat", "RENDER", "Render module · Nilore settings, local preview.", false);
         m.addSetting(ConfigSetting.bool("Background", true));
         m.addSetting(ConfigSetting.number("Background Alpha", 150.0f, 0.0f, 255.0f, 1.0f));
-        m.addSetting(ConfigSetting.number("Background Radius", 4.0f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Background Radius", 4.0f, 0.0f, 20.0f, 0.5f));
         m.addSetting(ConfigSetting.bool("Glow", true));
-        m.addSetting(ConfigSetting.number("Glow Radius", 13.0f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Glow Radius", 13.0f, 0.0f, 40.0f, 1.0f));
         m.addSetting(ConfigSetting.number("Glow Alpha", 85.0f, 0.0f, 255.0f, 1.0f));
         m.addSetting(ConfigSetting.bool("Blur", false));
-        m.addSetting(ConfigSetting.number("Blur Strength", 22.0f, 0.0f, 1.0f, 1.0f));
-        m.addSetting(ConfigSetting.number("Blur Opacity", 1.0f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Blur Strength", 22.0f, 1.0f, 30.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Blur Opacity", 1.0f, 0.0f, 1.0f, 0.05f));
         m.addSetting(ConfigSetting.mode("Font", "PingFang", "Minecraft", "Minecraft", "PingFang"));
-        m.addSetting(ConfigSetting.number("Y Offset", -60.0f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Y Offset", -60.0f, -60.0f, 60.0f, 1.0f));
         RENDER.add(m);
         m = nilore("nilore.render.betterfps", "BetterFPS", "RENDER", "Render module · Nilore settings, local preview.", false);
         m.addSetting(ConfigSetting.bool("Fast Math", true));
@@ -361,7 +361,7 @@ public final class Content {
         m.addSetting(ConfigSetting.number("Head Pitch Jitter", 3.0f, -360.0f, 360.0f, 1.0f));
         RENDER.add(m);
         m = nilore("nilore.render.fullbright", "FullBright", "RENDER", "Render module · Nilore settings, local preview.", false);
-        m.addSetting(ConfigSetting.number("Brightness", 90.0f, 0.0f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Brightness", 90.0f, 0.0f, 100.0f, 1.0f));
         RENDER.add(m);
         m = nilore("nilore.render.interface", "Interface", "RENDER", "Render module · Nilore settings, local preview.", false);
         RENDER.add(m);
@@ -507,8 +507,8 @@ public final class Content {
         m.addSetting(ConfigSetting.number("Fov", 138.0f, 1.0f, 360.0f, 1.0f));
         m.addSetting(ConfigSetting.bool("Mouse down", true));
         m.addSetting(ConfigSetting.bool("Adaptive", true));
-        m.addSetting(ConfigSetting.number("Adaptive Offset", 3.0f, 0.01f, 1.0f, 1.0f));
-        m.addSetting(ConfigSetting.number("Smooth amount", 3.5f, 0.1f, 1.0f, 1.0f));
+        m.addSetting(ConfigSetting.number("Adaptive Offset", 3.0f, 0.1f, 15.0f, 0.01f));
+        m.addSetting(ConfigSetting.number("Smooth amount", 3.5f, 1.0f, 90.0f, 0.1f));
         m.addSetting(ConfigSetting.bool("Break Block", true));
         GHOST.add(m);
         m = nilore("nilore.misc.autoclicker", "AutoClicker", "GHOST", "Ghost module · Nilore settings, local preview.", false);
