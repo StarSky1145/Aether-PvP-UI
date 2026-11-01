@@ -16,11 +16,11 @@ no image assets, no external UI library.
 
 ## Download
 
-[**AETHER-1.1.0-debug.apk**](https://github.com/StarSky1145/Aether-PvP-UI/releases/download/v1.1.0/AETHER-1.1.0-debug.apk)
+[**AETHER-1.1.1-debug.apk**](https://github.com/StarSky1145/Aether-PvP-UI/releases/download/v1.1.1/AETHER-1.1.1-debug.apk)
 — 319 KB, debug-signed, minSdk 26 / targetSdk 35.
 
 ```
-SHA-256  164b06dd67e3f5994e6127d14c3839e0537f40a36cae1bc2b70daab83249935c
+SHA-256  d0747c0b3b250cdf6b0b437036e471b20fd8dc943a1e51d0fb42ef07619ba663
 ```
 
 > The release is debug-signed for direct sideloading. Android may ask you to
