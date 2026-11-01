@@ -648,17 +648,20 @@ public final class HudOverlay {
     }
 
     private int category(String id) {
-        if (id.startsWith("combat.")) {
+        if (id.startsWith("nilore.combat.")) {
             return 0;
         }
-        if (id.startsWith("move.")) {
+        if (id.startsWith("nilore.movement.")) {
             return 1;
         }
-        if (id.startsWith("visual.")) {
+        if (id.startsWith("nilore.render.")) {
             return 2;
         }
-        if (id.startsWith("player.")) {
+        if (id.startsWith("nilore.player.")) {
             return 3;
+        }
+        if (id.startsWith("nilore.ghost.")) {
+            return 5;
         }
         return 4;
     }
@@ -673,6 +676,8 @@ public final class HudOverlay {
                 return Theme.LAVENDER;
             case 3:
                 return Theme.TEXT_SOFT;
+            case 5:
+                return Theme.MINT;
             default:
                 return Theme.TEXT_FAINT;
         }

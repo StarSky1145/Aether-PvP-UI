@@ -3,15 +3,19 @@ package com.aether.pvp.model;
 import com.aether.pvp.ui.Icons;
 
 /**
- * Primary navigation destinations. Each tab owns an independent module collection.
+ * Primary navigation destinations. The first seven mirror Nilore's categories;
+ * HUD and Config remain AETHER's own interface surfaces.
  */
 public enum Tab {
-    COMBAT("Combat", "COMBAT / 01", "Precision, distilled for the 1.8 duel meta.", Icons.SWORD),
+    COMBAT("Combat", "COMBAT / 01", "Precision, distilled for the duel meta.", Icons.SWORD),
     MOVEMENT("Movement", "MOVEMENT / 02", "Momentum with a lighter footprint.", Icons.WIND),
-    VISUALS("Visuals", "VISUALS / 03", "Atmosphere and information, restrained.", Icons.EYE),
-    HUD("HUD", "INTERFACE / 04", "What remains when the menu is gone.", Icons.LAYOUT),
-    PLAYER("Player", "PLAYER / 05", "Identity, teams and quiet utilities.", Icons.USER),
-    CONFIG("Config", "CONFIG / 06", "Profiles for every tempo of play.", Icons.SLIDERS);
+    PLAYER("Player", "PLAYER / 03", "Identity, inventory and quiet utilities.", Icons.USER),
+    RENDER("Render", "RENDER / 04", "Atmosphere and information, restrained.", Icons.EYE),
+    WORLD("World", "WORLD / 05", "Exploits framed as environmental control.", Icons.LOCK),
+    MISC("Misc", "MISC / 06", "The small systems that keep a session tidy.", Icons.SLIDERS),
+    GHOST("Ghost", "GHOST / 07", "Signals that leave no visible trace.", Icons.SEARCH),
+    HUD("HUD", "INTERFACE / 08", "What remains when the menu is gone.", Icons.LAYOUT),
+    CONFIG("Config", "CONFIG / 09", "Profiles for every tempo of play.", Icons.SLIDERS);
 
     public final String label;
     public final String kicker;

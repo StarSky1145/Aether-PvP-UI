@@ -11,6 +11,8 @@ public final class Module {
     public final String badge;
 
     public boolean enabled;
+    public final boolean defaultEnabled;
+    public final java.util.List<ConfigSetting> settings = new java.util.ArrayList<>();
     public final boolean hasSlider;
     public float value;
     public final float min;
@@ -45,7 +47,14 @@ public final class Module {
         this.step = step;
         this.suffix = suffix;
         this.actionLabel = actionLabel;
+        this.defaultEnabled = enabled;
         this.toggleAnim = enabled ? 1f : 0f;
+    }
+
+    public void addSetting(ConfigSetting setting) {
+        if (setting != null) {
+            settings.add(setting);
+        }
     }
 
     public static Module toggle(String id, String name, String description,

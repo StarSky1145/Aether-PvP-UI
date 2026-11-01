@@ -23,6 +23,7 @@ import android.widget.OverScroller;
 import com.aether.pvp.CrashLog;
 import com.aether.pvp.data.Content;
 import com.aether.pvp.data.Prefs;
+import com.aether.pvp.model.ConfigSetting;
 import com.aether.pvp.model.Module;
 import com.aether.pvp.model.Tab;
 import com.aether.pvp.render.AetherSurface;
@@ -65,6 +66,8 @@ public final class MenuView extends View {
     private final RectF[] configAccents = {new RectF(), new RectF(), new RectF(), new RectF()};
     private final RectF configReset = new RectF();
     private final RectF configDone = new RectF();
+    private final RectF configViewport = new RectF();
+    private final List<ConfigRow> configRows = new ArrayList<>();
     private final RectF[] tabRects = new RectF[TABS.length];
     private final RectF[] chipRects = {new RectF(), new RectF(), new RectF()};
     private final List<Card> cards = new ArrayList<>();
@@ -138,6 +141,17 @@ public final class MenuView extends View {
     private boolean pressedConfigToggle;
     private boolean pressedConfigReset;
     private boolean pressedConfigDone;
+    private float configScroll;
+    private float configMaxScroll;
+    private float configContentHeight;
+    private float configDownY;
+    private float configDownScroll;
+    private float configScrollStart;
+    private boolean configDragging;
+    private boolean configGesture;
+    private int configNumberRow = -1;
+    private int pressedConfigRow = -1;
+    private int pressedConfigOption = -1;
     private VelocityTracker velocityTracker;
 
     private Shader bgShader;
@@ -319,14 +333,16 @@ public final class MenuView extends View {
         float navLeft = panel.left + 10f * u;
         float navRight = railRight - 11f * u;
         float navTop = panel.top + 76f * u;
-        float itemH = 30f * u;
-        float itemGap = 3f * u;
+        float navBottom = panel.bottom - 29f * u;
+        float pitch = Math.min(33f * u, Math.max(20f * u,
+                (navBottom - navTop) / Math.max(1, count)));
+        float itemH = Math.max(17f * u, pitch - 2.5f * u);
         for (int i = 0; i < count; i++) {
             if (tabRects[i] == null) {
                 tabRects[i] = new RectF();
             }
-            tabRects[i].set(navLeft, navTop + i * (itemH + itemGap), navRight,
-                    navTop + i * (itemH + itemGap) + itemH);
+            tabRects[i].set(navLeft, navTop + i * pitch, navRight,
+                    navTop + i * pitch + itemH);
         }
 
         closeRect.set(contentRight - 34f * u, panel.top + 12f * u,
@@ -1240,6 +1256,10 @@ public final class MenuView extends View {
         configModule = module;
         configAnim = 0f;
         configSlider = -1;
+        configScroll = 0f;
+        configNumberRow = -1;
+        configGesture = false;
+        configDragging = false;
         clearConfigPresses();
         layoutConfig();
         invalidate();
@@ -1249,6 +1269,10 @@ public final class MenuView extends View {
         configModule = null;
         configAnim = 0f;
         configSlider = -1;
+        configScroll = 0f;
+        configNumberRow = -1;
+        configGesture = false;
+        configDragging = false;
         clearConfigPresses();
         invalidate();
     }
@@ -1257,8 +1281,12 @@ public final class MenuView extends View {
         if (configModule == null) {
             return;
         }
-        float mw = Math.min(520f * u, panel.width() - 34f * u);
-        float mh = Math.min(286f * u, panel.height() - 22f * u);
+        boolean settings = !configModule.settings.isEmpty();
+        float mw = Math.min(settings ? 536f * u : 520f * u,
+                panel.width() - 34f * u);
+        float mh = settings
+                ? Math.min(338f * u, panel.height() - 20f * u)
+                : Math.min(286f * u, panel.height() - 22f * u);
         float left = panel.centerX() - mw * 0.5f;
         float top = panel.centerY() - mh * 0.5f;
         configPanel.set(left, top, left + mw, top + mh);
@@ -1269,7 +1297,27 @@ public final class MenuView extends View {
                 configPanel.right - 44f * u, configPanel.top + 42f * u);
 
         float bodyTop = configPanel.top + 96f * u;
-        float footerTop = configPanel.bottom - 34f * u;
+        float footerTop = configPanel.bottom - (settings ? 38f : 34f) * u;
+        configViewport.set(configPanel.left + 16f * u, bodyTop,
+                configPanel.right - 16f * u, footerTop - (settings ? 7f : 0f) * u);
+
+        configReset.set(configPanel.left + 24f * u,
+                configPanel.bottom - (settings ? 31f : 34f) * u + 8f * u,
+                configPanel.left + 128f * u,
+                configPanel.bottom - (settings ? 31f : 34f) * u + 28f * u);
+        configDone.set(configPanel.right - 84f * u,
+                configPanel.bottom - (settings ? 31f : 34f) * u + 7f * u,
+                configPanel.right - 24f * u,
+                configPanel.bottom - (settings ? 31f : 34f) * u + 27f * u);
+
+        if (settings) {
+            layoutSettingRows();
+            return;
+        }
+
+        configRows.clear();
+        configScroll = 0f;
+        configMaxScroll = 0f;
         float rowH = (footerTop - bodyTop) / 5f;
         float controlX = configPanel.left + 100f * u;
         float valueRight = configPanel.right - 24f * u;
@@ -1282,10 +1330,10 @@ public final class MenuView extends View {
         }
 
         float modeY = bodyTop + rowH * 1.5f - 10f * u;
-        float mwChip = 62f * u;
+        float modeChipW = 62f * u;
         for (int i = 0; i < 3; i++) {
-            configModes[i].set(controlX + i * (mwChip + 4f * u), modeY,
-                    controlX + i * (mwChip + 4f * u) + mwChip, modeY + 20f * u);
+            configModes[i].set(controlX + i * (modeChipW + 4f * u), modeY,
+                    controlX + i * (modeChipW + 4f * u) + modeChipW, modeY + 20f * u);
         }
 
         for (int i = 0; i < 2; i++) {
@@ -1300,11 +1348,47 @@ public final class MenuView extends View {
             configAccents[i].set(cx - 9f * u, accentY - 9f * u,
                     cx + 9f * u, accentY + 9f * u);
         }
+    }
 
-        configReset.set(configPanel.left + 24f * u, footerTop + 8f * u,
-                configPanel.left + 128f * u, footerTop + 28f * u);
-        configDone.set(configPanel.right - 84f * u, footerTop + 7f * u,
-                configPanel.right - 24f * u, footerTop + 27f * u);
+    private void layoutSettingRows() {
+        configRows.clear();
+        float width = Math.max(1f, configViewport.width());
+        Paint measure = Ui.text(7.1f * u, Theme.TEXT_DIM, Theme.regular, 0f);
+        float y = 0f;
+        for (ConfigSetting setting : configModule.settings) {
+            ConfigRow row = new ConfigRow(setting);
+            if (setting.type == ConfigSetting.BOOLEAN) {
+                row.bounds.set(0f, y, width, y + 30f * u);
+                row.toggle.set(width - 38f * u, y + 7f * u,
+                        width - 8f * u, y + 23f * u);
+                y = row.bounds.bottom + 4f * u;
+            } else if (setting.type == ConfigSetting.NUMBER) {
+                row.bounds.set(0f, y, width, y + 46f * u);
+                row.track.set(2f * u, y + 29f * u, width - 2f * u, y + 35f * u);
+                y = row.bounds.bottom + 4f * u;
+            } else {
+                float chipX = 0f;
+                float chipY = y + 21f * u;
+                for (int i = 0; i < setting.options.length; i++) {
+                    float chipW = Math.min(width,
+                            measure.measureText(setting.options[i]) + 15f * u);
+                    if (chipX > 0f && chipX + chipW > width) {
+                        chipX = 0f;
+                        chipY += 21f * u;
+                    }
+                    ConfigChip chip = new ConfigChip(i);
+                    chip.rect.set(chipX, chipY, chipX + chipW, chipY + 18f * u);
+                    row.chips.add(chip);
+                    chipX += chipW + 4f * u;
+                }
+                row.bounds.set(0f, y, width, chipY + 22f * u);
+                y = row.bounds.bottom + 4f * u;
+            }
+            configRows.add(row);
+        }
+        configContentHeight = Math.max(0f, y);
+        configMaxScroll = Math.max(0f, configContentHeight - configViewport.height());
+        configScroll = Ui.clamp(configScroll, 0f, configMaxScroll);
     }
 
     private void drawConfig(Canvas canvas) {
@@ -1380,6 +1464,186 @@ public final class MenuView extends View {
         canvas.drawLine(left, configPanel.top + 80f * u,
                 configPanel.right - 24f * u, configPanel.top + 80f * u, rule);
 
+        if (m.settings.isEmpty()) {
+            if (m.id.startsWith("nilore.")) {
+                drawNoSettings(canvas, m, left);
+            } else {
+                drawLegacyConfigBody(canvas, m, left);
+            }
+        } else {
+            drawSettingsBody(canvas);
+        }
+        drawConfigFooter(canvas, left);
+        canvas.restore();
+    }
+
+    private void drawNoSettings(Canvas canvas, Module m, float left) {
+        float top = configPanel.top + 118f * u;
+        float right = configPanel.right - 24f * u;
+        canvas.drawRoundRect(left, top, right, top + 92f * u, 10f * u, 10f * u,
+                Ui.fill(0x03FFFFFF));
+        canvas.drawRoundRect(left, top, right, top + 92f * u, 10f * u, 10f * u,
+                Ui.stroke(0x0FFFFFFF, 1f));
+        textPaint.set(pKicker);
+        textPaint.setColor(Theme.LAVENDER);
+        Ui.textCenter(canvas, "NO MODULE SETTINGS", (left + right) * 0.5f,
+                top + 32f * u, textPaint);
+        textPaint.set(pCardDesc);
+        textPaint.setColor(Theme.TEXT_DIM);
+        Ui.textCenter(canvas, "OpenNilore exposes only an enable state for " + m.name + ".",
+                (left + right) * 0.5f, top + 51f * u, textPaint);
+        textPaint.set(pKey);
+        textPaint.setColor(Theme.TEXT_FAINT);
+        Ui.textCenter(canvas, "TOGGLE IT FROM THE CARD OR THE SWITCH ABOVE",
+                (left + right) * 0.5f, top + 70f * u, textPaint);
+    }
+
+    private void drawSettingsBody(Canvas canvas) {
+        if (configModule == null) {
+            return;
+        }
+        canvas.save();
+        canvas.clipRect(configViewport);
+        float x = configViewport.left;
+        for (int i = 0; i < configRows.size(); i++) {
+            ConfigRow row = configRows.get(i);
+            float top = configViewport.top + row.bounds.top - configScroll;
+            if (top + row.bounds.height() < configViewport.top
+                    || top > configViewport.bottom) {
+                continue;
+            }
+            boolean pressed = pressedConfigRow == i;
+            boolean hover = hoverActive && hoverX >= configViewport.left
+                    && hoverX <= configViewport.right
+                    && hoverY >= top && hoverY <= top + row.bounds.height();
+            if (pressed || hover) {
+                canvas.drawRoundRect(x - 2f * u, top + 1f * u,
+                        x + row.bounds.width() + 2f * u,
+                        top + row.bounds.height() - 1f * u,
+                        6f * u, 6f * u, Ui.fill(pressed ? 0x07FFFFFF : 0x04FFFFFF));
+            }
+            drawSettingRow(canvas, row, x, top, i);
+        }
+        canvas.restore();
+
+        if (configMaxScroll > 0f) {
+            float trackTop = configViewport.top + 2f * u;
+            float trackH = configViewport.height() - 4f * u;
+            float thumbH = Math.max(20f * u,
+                    trackH * configViewport.height() / Math.max(1f, configContentHeight));
+            float progress = configScroll / configMaxScroll;
+            float thumbTop = trackTop + (trackH - thumbH) * progress;
+            canvas.drawRoundRect(configViewport.right - 3f * u, trackTop,
+                    configViewport.right - 1f * u, trackTop + trackH,
+                    1f * u, 1f * u, Ui.fill(0x08FFFFFF));
+            canvas.drawRoundRect(configViewport.right - 3f * u, thumbTop,
+                    configViewport.right - 1f * u, thumbTop + thumbH,
+                    1f * u, 1f * u, Ui.fill(0x22C9B8FF));
+        }
+    }
+
+    private void drawSettingRow(Canvas canvas, ConfigRow row, float x, float top, int index) {
+        ConfigSetting setting = row.setting;
+        textPaint.setTypeface(Theme.regular);
+        textPaint.setLetterSpacing(0f);
+        if (setting.type == ConfigSetting.BOOLEAN) {
+            textPaint.set(pKey);
+            textPaint.setTextSize(8.2f * u);
+            textPaint.setColor(Theme.TEXT_DIM);
+            canvas.drawText(setting.name, x + 2f * u, top + 19f * u, textPaint);
+            drawMiniToggle(canvas, x + row.toggle.left, top + row.toggle.top, setting.bool,
+                    pressedConfigRow == index);
+            return;
+        }
+        if (setting.type == ConfigSetting.NUMBER) {
+            textPaint.set(pKey);
+            textPaint.setTextSize(8.2f * u);
+            textPaint.setColor(Theme.TEXT_DIM);
+            canvas.drawText(setting.name, x + 2f * u, top + 14f * u, textPaint);
+            textPaint.set(pValue);
+            textPaint.setColor(Theme.TEXT);
+            Ui.textRight(canvas, setting.numberLabel(), x + row.bounds.width() - 2f * u,
+                    top + 14f * u, textPaint);
+            float trackLeft = x + row.track.left;
+            float trackRight = x + row.track.right;
+            float trackY = top + row.track.centerY();
+            canvas.drawRoundRect(trackLeft, trackY - 1f * u, trackRight, trackY + 1f * u,
+                    1f * u, 1f * u, Ui.fill(0x14FFFFFF));
+            float ratio = setting.ratio();
+            if (ratio > 0f) {
+                Paint fill = Ui.fill(0xFFFFFFFF);
+                fill.setShader(new LinearGradient(trackLeft, 0f, trackRight, 0f,
+                        Ui.alpha(Theme.LAVENDER, 0.9f), Ui.alpha(Theme.MINT, 0.8f),
+                        Shader.TileMode.CLAMP));
+                canvas.drawRoundRect(trackLeft, trackY - 1f * u,
+                        trackLeft + (trackRight - trackLeft) * ratio, trackY + 1f * u,
+                        1f * u, 1f * u, fill);
+            }
+            float knob = trackLeft + (trackRight - trackLeft) * ratio;
+            canvas.drawCircle(knob, trackY, 6.4f * u,
+                    Ui.fill(Ui.alpha(Theme.LAVENDER, 0.14f)));
+            canvas.drawCircle(knob, trackY, 3.4f * u, Ui.fill(Theme.TEXT));
+            return;
+        }
+
+        textPaint.set(pKey);
+        textPaint.setTextSize(8.2f * u);
+        textPaint.setColor(Theme.TEXT_DIM);
+        canvas.drawText(setting.name, x + 2f * u, top + 12f * u, textPaint);
+        for (ConfigChip chip : row.chips) {
+            boolean selected = setting.type == ConfigSetting.MODE
+                    ? setting.options[chip.index].equals(setting.mode)
+                    : chip.index < setting.selected.length && setting.selected[chip.index];
+            boolean chipHover = hoverActive && hoverX >= x + chip.rect.left
+                    && hoverX <= x + chip.rect.right
+                    && hoverY >= top + chip.rect.top && hoverY <= top + chip.rect.bottom;
+            boolean chipPressed = pressedConfigRow == index && pressedConfigOption == chip.index;
+            int accent = setting.type == ConfigSetting.MODE ? Theme.LAVENDER : Theme.MINT;
+            float l = x + chip.rect.left;
+            float t = top + chip.rect.top;
+            float r = x + chip.rect.right;
+            float b = top + chip.rect.bottom;
+            canvas.drawRoundRect(l, t, r, b, 5f * u, 5f * u,
+                    Ui.fill(selected ? Ui.alpha(accent, 0.14f)
+                            : (chipPressed ? 0x10FFFFFF : (chipHover ? 0x08FFFFFF : 0x03FFFFFF))));
+            canvas.drawRoundRect(l, t, r, b, 5f * u, 5f * u,
+                    Ui.stroke(selected ? Ui.alpha(accent, 0.50f) : 0x10FFFFFF, 1f));
+            textPaint.set(pKey);
+            textPaint.setTextSize(6.8f * u);
+            textPaint.setColor(selected ? Theme.TEXT : Theme.TEXT_FAINT);
+            Ui.textCenter(canvas, setting.options[chip.index],
+                    (l + r) * 0.5f, (t + b) * 0.5f + 2.2f * u, textPaint);
+        }
+    }
+
+    private void drawMiniToggle(Canvas canvas, float left, float top, boolean on,
+                                boolean pressed) {
+        float width = 30f * u;
+        float height = 16f * u;
+        RectF r = new RectF(left, top, left + width, top + height);
+        canvas.drawRoundRect(r, height * 0.5f, height * 0.5f,
+                Ui.fill(on ? Ui.alpha(Theme.LAVENDER, pressed ? 0.32f : 0.24f)
+                        : (pressed ? 0x16FFFFFF : 0x0AFFFFFF)));
+        canvas.drawRoundRect(r, height * 0.5f, height * 0.5f,
+                Ui.stroke(on ? Ui.alpha(Theme.LAVENDER, 0.65f) : 0x18FFFFFF, 1f));
+        float cx = on ? r.right - height * 0.5f : r.left + height * 0.5f;
+        canvas.drawCircle(cx, r.centerY(), height * 0.31f,
+                Ui.fill(on ? Theme.LAVENDER : Theme.TEXT_FAINT));
+    }
+
+    private void drawConfigFooter(Canvas canvas, float left) {
+        float footerTop = configPanel.bottom - (configModule.settings.isEmpty() ? 34f : 31f) * u;
+        Paint footerRule = Ui.stroke(0x0FFFFFFF, 1f);
+        canvas.drawLine(left, footerTop, configPanel.right - 24f * u, footerTop, footerRule);
+        boolean resetHover = hoverActive && configReset.contains(hoverX, hoverY);
+        textPaint.set(pButton);
+        textPaint.setColor(resetHover || pressedConfigReset ? Theme.ROSE : Theme.TEXT_DIM);
+        canvas.drawText("RESET MODULE", configReset.left,
+                configReset.centerY() + 2f * u, textPaint);
+        drawConfigButton(canvas, configDone, "DONE", pressedConfigDone);
+    }
+
+    private void drawLegacyConfigBody(Canvas canvas, Module m, float left) {
         float bodyTop = configPanel.top + 96f * u;
         float footerTop = configPanel.bottom - 34f * u;
         float rowH = (footerTop - bodyTop) / 5f;
@@ -1416,17 +1680,6 @@ public final class MenuView extends View {
             }
             canvas.drawCircle(cx, cy, 4.8f * u, Ui.fill(Ui.alpha(color, 0.9f)));
         }
-
-        Paint footerRule = Ui.stroke(0x0FFFFFFF, 1f);
-        canvas.drawLine(left, footerTop, configPanel.right - 24f * u, footerTop, footerRule);
-        boolean resetHover = hoverActive && configReset.contains(hoverX, hoverY);
-        textPaint.set(pButton);
-        textPaint.setColor(resetHover || pressedConfigReset ? Theme.ROSE : Theme.TEXT_DIM);
-        canvas.drawText("RESET MODULE", configReset.left,
-                configReset.centerY() + 2f * u, textPaint);
-        drawConfigButton(canvas, configDone, "DONE", pressedConfigDone);
-
-        canvas.restore();
     }
 
     private void drawConfigChip(Canvas canvas, RectF r, String label,
@@ -1505,10 +1758,14 @@ public final class MenuView extends View {
             case COMBAT:
             case MOVEMENT:
                 return new String[]{"SILENT", "SMOOTH", "LEGIT"};
-            case VISUALS:
+            case RENDER:
                 return new String[]{"SOFT", "BALANCED", "VIVID"};
             case PLAYER:
                 return new String[]{"LOCAL", "SYNC", "MANUAL"};
+            case WORLD:
+            case MISC:
+            case GHOST:
+                return new String[]{"NORMAL", "SMOOTH", "INSTANT"};
             case CONFIG:
                 return new String[]{"DEFAULT", "RANKED", "VANILLA"};
             default:
@@ -1568,19 +1825,30 @@ public final class MenuView extends View {
     private void configDown(float x, float y) {
         clearConfigPresses();
         configSlider = -1;
+        configNumberRow = -1;
+        configDragging = false;
+        configGesture = false;
         if (!configPanel.contains(x, y)) {
             closeConfig();
             return;
         }
         if (configClose.contains(x, y)) {
             pressedConfigClose = true;
-        } else if (configToggle.contains(x, y)) {
+            return;
+        }
+        if (configToggle.contains(x, y)) {
             pressedConfigToggle = true;
-        } else if (configReset.contains(x, y)) {
+            return;
+        }
+        if (configReset.contains(x, y)) {
             pressedConfigReset = true;
-        } else if (configDone.contains(x, y)) {
+            return;
+        }
+        if (configDone.contains(x, y)) {
             pressedConfigDone = true;
-        } else {
+            return;
+        }
+        if (configModule == null || configModule.settings.isEmpty()) {
             for (int i = 0; i < 5; i++) {
                 if (configKeys[i].contains(x, y)) {
                     pressedConfigKey = i;
@@ -1606,6 +1874,64 @@ public final class MenuView extends View {
                     return;
                 }
             }
+            return;
+        }
+
+        if (!configViewport.contains(x, y)) {
+            return;
+        }
+        configDownY = y;
+        configScrollStart = configScroll;
+        configGesture = true;
+        float contentY = y - configViewport.top + configScroll;
+        int index = settingRowAt(contentY);
+        if (index < 0) {
+            return;
+        }
+        ConfigRow row = configRows.get(index);
+        if (row.setting.type == ConfigSetting.NUMBER) {
+            float trackTop = configViewport.top + row.track.top - configScroll;
+            if (y >= trackTop - 9f * u && y <= trackTop + row.track.height() + 9f * u) {
+                configNumberRow = index;
+                updateConfigNumber(x);
+                return;
+            }
+        }
+        float contentX = x - configViewport.left;
+        for (ConfigChip chip : row.chips) {
+            if (chip.rect.contains(contentX, contentY)) {
+                pressedConfigRow = index;
+                pressedConfigOption = chip.index;
+                return;
+            }
+        }
+        pressedConfigRow = index;
+    }
+
+    private void configMove(float x, float y) {
+        if (configModule == null) {
+            return;
+        }
+        if (!configModule.settings.isEmpty()) {
+            if (configNumberRow >= 0) {
+                updateConfigNumber(x);
+                return;
+            }
+            if (!configGesture) {
+                return;
+            }
+            float dy = y - configDownY;
+            if (!configDragging && Math.abs(dy) > touchSlop) {
+                configDragging = true;
+            }
+            if (configDragging) {
+                configScroll = Ui.clamp(configScrollStart - dy, 0f, configMaxScroll);
+                invalidate();
+            }
+            return;
+        }
+        if (configSlider >= 0) {
+            updateConfigSlider(x);
         }
     }
 
@@ -1614,6 +1940,52 @@ public final class MenuView extends View {
         if (m == null) {
             return;
         }
+        if (!m.settings.isEmpty()) {
+            if (configNumberRow >= 0) {
+                prefs.saveSettings(m);
+                configNumberRow = -1;
+                clearConfigPresses();
+                invalidate();
+                return;
+            }
+            if (configGesture) {
+                if (!configDragging && pressedConfigRow >= 0
+                        && pressedConfigRow < configRows.size()) {
+                    ConfigRow row = configRows.get(pressedConfigRow);
+                    float contentY = y - configViewport.top + configScroll;
+                    float contentX = x - configViewport.left;
+                    boolean onRow = contentY >= row.bounds.top && contentY <= row.bounds.bottom;
+                    if (pressedConfigOption >= 0) {
+                        for (ConfigChip chip : row.chips) {
+                            if (chip.index == pressedConfigOption
+                                    && chip.rect.contains(contentX, contentY)) {
+                                if (row.setting.type == ConfigSetting.MODE) {
+                                    row.setting.mode = row.setting.options[chip.index];
+                                } else if (chip.index < row.setting.selected.length) {
+                                    row.setting.selected[chip.index] = !row.setting.selected[chip.index];
+                                }
+                                prefs.saveSettings(m);
+                                break;
+                            }
+                        }
+                    } else if (onRow) {
+                        if (row.setting.type == ConfigSetting.BOOLEAN) {
+                            row.setting.toggleBool();
+                            prefs.saveSettings(m);
+                        } else if (row.setting.type == ConfigSetting.MODE) {
+                            row.setting.cycleMode();
+                            prefs.saveSettings(m);
+                        }
+                    }
+                }
+                configGesture = false;
+                configDragging = false;
+                clearConfigPresses();
+                invalidate();
+                return;
+            }
+        }
+
         if (configSlider >= 0) {
             prefs.saveConfig(m);
             if (m.hasSlider) {
@@ -1647,6 +2019,31 @@ public final class MenuView extends View {
         invalidate();
     }
 
+    private int settingRowAt(float contentY) {
+        for (int i = 0; i < configRows.size(); i++) {
+            RectF bounds = configRows.get(i).bounds;
+            if (contentY >= bounds.top && contentY <= bounds.bottom) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void updateConfigNumber(float x) {
+        if (configModule == null || configNumberRow < 0
+                || configNumberRow >= configRows.size()) {
+            return;
+        }
+        ConfigRow row = configRows.get(configNumberRow);
+        float width = row.track.width();
+        if (width <= 1f) {
+            return;
+        }
+        float ratio = Ui.clamp((x - (configViewport.left + row.track.left)) / width, 0f, 1f);
+        row.setting.setFromRatio(ratio);
+        invalidate();
+    }
+
     private void updateConfigSlider(float x) {
         if (configModule == null || configSlider < 0 || configSlider > 1) {
             return;
@@ -1669,6 +2066,10 @@ public final class MenuView extends View {
     }
 
     private void resetConfig(Module m) {
+        for (ConfigSetting setting : m.settings) {
+            setting.reset();
+        }
+        prefs.saveSettings(m);
         m.keybind = "NONE";
         m.mode = 0;
         m.accent = 0;
@@ -1691,6 +2092,8 @@ public final class MenuView extends View {
         pressedConfigAccent = -1;
         pressedConfigReset = false;
         pressedConfigDone = false;
+        pressedConfigRow = -1;
+        pressedConfigOption = -1;
     }
 
     private boolean toggleHit(Card card, float x, float y) {
@@ -1880,6 +2283,7 @@ public final class MenuView extends View {
         for (Module m : Content.all()) {
             prefs.save(m);
             prefs.saveConfig(m);
+            prefs.saveSettings(m);
         }
         hud.push("Profile saved", "All module settings stored locally", Theme.MINT);
         showToast("Configuration saved locally");
@@ -1967,9 +2371,7 @@ public final class MenuView extends View {
                     velocityTracker.addMovement(event);
                 }
                 if (configModule != null) {
-                    if (configSlider >= 0) {
-                        updateConfigSlider(x);
-                    }
+                    configMove(x, y);
                     return true;
                 }
                 if (!open) {
@@ -2057,6 +2459,9 @@ public final class MenuView extends View {
             case MotionEvent.ACTION_CANCEL: {
                 if (configModule != null) {
                     configSlider = -1;
+                    configNumberRow = -1;
+                    configGesture = false;
+                    configDragging = false;
                     clearConfigPresses();
                 }
                 if (activeSlider != null) {
@@ -2179,6 +2584,27 @@ public final class MenuView extends View {
         Card(Module module, RectF rect) {
             this.module = module;
             this.rect = rect;
+        }
+    }
+
+    private static final class ConfigRow {
+        final ConfigSetting setting;
+        final RectF bounds = new RectF();
+        final RectF track = new RectF();
+        final RectF toggle = new RectF();
+        final List<ConfigChip> chips = new ArrayList<>();
+
+        ConfigRow(ConfigSetting setting) {
+            this.setting = setting;
+        }
+    }
+
+    private static final class ConfigChip {
+        final int index;
+        final RectF rect = new RectF();
+
+        ConfigChip(int index) {
+            this.index = index;
         }
     }
 }

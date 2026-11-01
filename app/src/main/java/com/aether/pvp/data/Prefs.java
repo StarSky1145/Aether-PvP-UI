@@ -3,6 +3,7 @@ package com.aether.pvp.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.aether.pvp.model.ConfigSetting;
 import com.aether.pvp.model.Module;
 import com.aether.pvp.model.Tab;
 
@@ -31,7 +32,57 @@ public final class Prefs {
             m.configA = sp.getFloat(m.id + ".a", m.configA);
             m.configB = sp.getFloat(m.id + ".b", m.configB);
             m.toggleAnim = m.enabled ? 1f : 0f;
+            loadSettings(m);
         }
+    }
+
+    /** Restores every generic Nilore-parity setting for one module. */
+    public void loadSettings(Module m) {
+        for (int i = 0; i < m.settings.size(); i++) {
+            ConfigSetting s = m.settings.get(i);
+            String base = m.id + ".s." + i + ".";
+            s.reset();
+            if (s.type == ConfigSetting.BOOLEAN) {
+                s.bool = sp.getBoolean(base + "b", s.bool);
+            } else if (s.type == ConfigSetting.NUMBER) {
+                s.number = sp.getFloat(base + "n", s.number);
+            } else if (s.type == ConfigSetting.MODE) {
+                int index = sp.getInt(base + "m", s.modeIndex());
+                if (index >= 0 && index < s.options.length) {
+                    s.mode = s.options[index];
+                }
+            } else if (s.type == ConfigSetting.MULTI) {
+                String stored = sp.getString(base + "x", "");
+                if (!stored.isEmpty()) {
+                    String[] parts = stored.split(",");
+                    for (int k = 0; k < s.selected.length; k++) {
+                        s.selected[k] = k < parts.length && "1".equals(parts[k]);
+                    }
+                }
+            }
+        }
+    }
+
+    public void saveSettings(Module m) {
+        SharedPreferences.Editor edit = sp.edit();
+        for (int i = 0; i < m.settings.size(); i++) {
+            ConfigSetting s = m.settings.get(i);
+            String base = m.id + ".s." + i + ".";
+            if (s.type == ConfigSetting.BOOLEAN) {
+                edit.putBoolean(base + "b", s.bool);
+            } else if (s.type == ConfigSetting.NUMBER) {
+                edit.putFloat(base + "n", s.number);
+            } else if (s.type == ConfigSetting.MODE) {
+                edit.putInt(base + "m", s.modeIndex());
+            } else if (s.type == ConfigSetting.MULTI) {
+                StringBuilder sb = new StringBuilder();
+                for (boolean on : s.selected) {
+                    sb.append(on ? '1' : '0').append(',');
+                }
+                edit.putString(base + "x", sb.toString());
+            }
+        }
+        edit.apply();
     }
 
     public void save(Module m) {
@@ -87,27 +138,7 @@ public final class Prefs {
     public void reset() {
         sp.edit().clear().apply();
         for (Module m : Content.all()) {
-            m.enabled = m.id.equals("combat.aura")
-                    || m.id.equals("combat.reach")
-                    || m.id.equals("combat.velocity")
-                    || m.id.equals("move.sprint")
-                    || m.id.equals("move.speed")
-                    || m.id.equals("move.noslow")
-                    || m.id.equals("visual.esp")
-                    || m.id.equals("visual.nametags")
-                    || m.id.equals("visual.ambience")
-                    || m.id.equals("visual.hud")
-                    || m.id.equals("hud.watermark")
-                    || m.id.equals("hud.arraylist")
-                    || m.id.equals("hud.notifications")
-                    || m.id.equals("hud.targethud")
-                    || m.id.equals("hud.coordinates")
-                    || m.id.equals("hud.island")
-                    || m.id.equals("hud.potions")
-                    || m.id.equals("hud.playerlist")
-                    || m.id.equals("player.friends")
-                    || m.id.equals("player.teams")
-                    || m.id.equals("config.autosave");
+            m.enabled = m.defaultEnabled;
             m.toggleAnim = m.enabled ? 1f : 0f;
             m.value = defaultValue(m.id, m.value);
             m.keybind = "NONE";
@@ -115,6 +146,9 @@ public final class Prefs {
             m.accent = 0;
             m.configA = 0.5f;
             m.configB = 0.65f;
+            for (ConfigSetting setting : m.settings) {
+                setting.reset();
+            }
         }
     }
 
